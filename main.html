@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR Color-Range Finder</title>
+    <!-- 1. Load Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. Load OpenCV.js -->
+    <!-- This is a large file and will take a moment to load. -->
+    <!-- We call onOpenCvReady() once it's loaded. -->
+    <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
+    <style>
+        /* Custom styles for sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0ea5e9; /* sky-500 */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0ea5e9;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-sky-400">SAR Color-Range Finder</h1>
+            <p class="text-gray-400">Proof-of-Concept using OpenCV.js</p>
+        </header>
+
+        <!-- Loading Spinner -->
+        <div id="loader" class="text-center p-8">
+            <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-sky-400 motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+            </div>
+            <p class="mt-4 text-lg">Loading OpenCV.js (this may take a moment)...</p>
+            <p class="text-sm text-gray-500">App will be enabled once loading is complete.</p>
+        </div>
+
+        <!-- Main App Content (hidden until OpenCV is ready) -->
+        <main id="app-content" class="hidden">
+            
+            <!-- 1. Controls -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Controls</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- File Input -->
+                    <div>
+                        <label for="video-input" class="block text-sm font-medium mb-2">1. Load Drone Video</label>
+                        <input type="file" id="video-input" accept="video/*" class="block w-full text-sm text-gray-300
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-sky-600 file:text-white
+                            hover:file:bg-sky-700
+                            file:cursor-pointer
+                        ">
+                    </div>
+                    <!-- Action Button -->
+                    <div>
+                        <label for="start-btn" class="block text-sm font-medium mb-2">2. Start Processing</label>
+                        <button id="start-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                            Start/Pause
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. HSV Sliders for Color Selection -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+                <h2 class="text-xl font-semibold mb-2">Color Range (HSV)</h2>
+                <p class="text-sm text-gray-400 mb-4">Adjust sliders to target a "non-natural" color (e.g., bright blue tarp, orange vest). <br> Note: Red is tricky as it wraps around the 0/180 Hue mark.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <!-- Column 1: Hue & Saturation -->
+                    <div>
+                        <!-- Hue Range -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Hue (Color)</span>
+                                <span><span id="h-min-val">100</span> - <span id="h-max-val">130</span></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs">Min</span>
+                                <input type="range" id="h-min" min="0" max="179" value="100" class="flex-1">
+                                <input type="range" id="h-max" min="0" max="179" value="130" class="flex-1">
+                                <span class="text-xs">Max</span>
+                            </div>
+                        </div>
+                        <!-- Saturation Range -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Saturation (Intensity)</span>
+                                <span><span id="s-min-val">150</span> - <span id="s-max-val">255</span></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs">Min</span>
+                                <input type="range" id="s-min" min="0" max="255" value="150" class="flex-1">
+                                <input type="range" id="s-max" min="0" max="255" value="255" class="flex-1">
+                                <span class="text-xs">Max</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Column 2: Value & Size -->
+                    <div>
+                        <!-- Value Range -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Value (Brightness)</span>
+                                <span><span id="v-min-val">100</span> - <span id="v-max-val">255</span></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs">Min</span>
+                                <input type="range" id="v-min" min="0" max="255" value="100" class="flex-1">
+                                <input type="range" id="v-max" min="0" max="255" value="255" class="flex-1">
+                                <span class="text-xs">Max</span>
+                            </div>
+                        </div>
+                        <!-- Min Size -->
+                        <div class="mb-4">
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>Min. Object Size (Pixels)</span>
+                                <span id="size-val">500</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs">Small</span>
+                                <input type="range" id="min-size" min="10" max="5000" value="500" class="flex-1">
+                                <span class="text-xs">Large</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center mt-4 flex justify-center gap-4">
+                    <button id="pick-color-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                        Pick Color from Frame
+                    </button>
+                    <label class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 cursor-pointer">
+                        Select Color
+                        <input type="color" id="color-picker" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <!-- 3. Video/Canvas Output -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Original Video (hidden, used as source) -->
+                <div class="hidden">
+                    <video id="video-in" controls></video>
+                </div>
+
+                <!-- Processed Output -->
+                <div class="bg-gray-800 p-4 rounded-lg shadow-lg col-span-1 md:col-span-2">
+                    <h2 class="text-xl font-semibold mb-4">Processed Output</h2>
+                    <p id="status-msg" class="text-sky-400 mb-4">Status: Waiting for video file...</p>
+                    <div class="aspect-video bg-gray-900 rounded overflow-hidden">
+                        <!-- OpenCV will draw its output to this canvas -->
+                        <canvas id="canvas-out" class="w-full h-full"></canvas>
+                    </div>
+                    <div class="mt-4">
+                        <input type="range" id="video-seek" min="0" max="100" value="0" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 4. Main JavaScript Logic -->
+    <script>
+        // Global variables
+        let video;
+        let videoStream;
+        let cap;
+        let srcMat, rgbMat, hsvMat, maskMat, contours, hierarchy;
+        let isProcessing = false;
+        let pickMode = false;
+        let fps = 30; // Target FPS
+        let elapsed;
+        let then;
+        let now;
+
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            const d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return [Math.round(h * 179), Math.round(s * 255), Math.round(v * 255)];
+        }
+
+        function initMatsIfReady() {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                const canvas = document.getElementById('canvas-out');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                video.width = video.videoWidth;
+                video.height = video.videoHeight;
+
+                if (srcMat) {
+                    srcMat.delete();
+                    rgbMat.delete();
+                    hsvMat.delete();
+                    maskMat.delete();
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) {
+                            contours.get(i).delete();
+                        }
+                        contours.delete();
+                    }
+                    hierarchy.delete();
+                }
+
+                srcMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
+                rgbMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                hsvMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                maskMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
+                contours = new cv.MatVector();
+                hierarchy = new cv.Mat();
+
+                cap = new cv.VideoCapture(video);
+
+                cap.read(srcMat);
+                cv.imshow('canvas-out', srcMat);
+
+                updateStatus("Ready to process. Press Start.", "text-green-400");
+            }
+        }
+
+        // --- OpenCV Loading ---
+        
+        // This function is called by the <script> tag's onload event
+        function onOpenCvReady() {
+            console.log("OpenCV.js is ready.");
+            // Hide loader and show main app content
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            
+            // Get video element
+            video = document.getElementById('video-in');
+            
+            // --- Event Listeners ---
+            
+            // Handle file input
+            document.getElementById('video-input').addEventListener('change', (e) => {
+                if (isProcessing) {
+                    pauseProcessing();
+                }
+                if (cap) {
+                    cap.delete();
+                    cap = null;
+                }
+                if (srcMat) {
+                    srcMat.delete();
+                    rgbMat.delete();
+                    hsvMat.delete();
+                    maskMat.delete();
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) {
+                            contours.get(i).delete();
+                        }
+                        contours.delete();
+                    }
+                    hierarchy.delete();
+                }
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const url = URL.createObjectURL(file);
+                video.src = url;
+                video.load();
+                video.loop = true;
+                
+                // When video metadata is loaded, prepare OpenCV mats
+                video.onloadedmetadata = initMatsIfReady;
+                video.addEventListener('resize', initMatsIfReady);
+            });
+
+            // Handle Start/Pause button
+            document.getElementById('start-btn').addEventListener('click', () => {
+                if (!video.src) {
+                    updateStatus("Please load a video file first.", "text-red-400");
+                    return;
+                }
+                
+                if (isProcessing) {
+                    pauseProcessing();
+                } else {
+                    startProcessing();
+                }
+            });
+
+            // Pick color button
+            document.getElementById('pick-color-btn').addEventListener('click', () => {
+                if (isProcessing) {
+                    updateStatus("Pause processing before picking color.", "text-red-400");
+                    return;
+                }
+                if (!video.src) {
+                    updateStatus("Load a video first.", "text-red-400");
+                    return;
+                }
+                pickMode = true;
+                updateStatus("Click on the canvas to pick color.", "text-sky-400");
+            });
+
+            // Color picker input
+            document.getElementById('color-picker').addEventListener('input', (e) => {
+                const hex = e.target.value;
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                const [h, s, v] = rgbToHsv(r, g, b);
+
+                const deltaH = 10;
+                const deltaSV = 50;
+                const hMin = Math.max(0, h - deltaH);
+                const hMax = Math.min(179, h + deltaH);
+                const sMin = Math.max(0, s - deltaSV);
+                const sMax = Math.min(255, s + deltaSV);
+                const vMin = Math.max(0, v - deltaSV);
+                const vMax = Math.min(255, v + deltaSV);
+
+                document.getElementById('h-min').value = hMin;
+                document.getElementById('h-max').value = hMax;
+                document.getElementById('s-min').value = sMin;
+                document.getElementById('s-max').value = sMax;
+                document.getElementById('v-min').value = vMin;
+                document.getElementById('v-max').value = vMax;
+
+                document.getElementById('h-min-val').textContent = hMin;
+                document.getElementById('h-max-val').textContent = hMax;
+                document.getElementById('s-min-val').textContent = sMin;
+                document.getElementById('s-max-val').textContent = sMax;
+                document.getElementById('v-min-val').textContent = vMin;
+                document.getElementById('v-max-val').textContent = vMax;
+
+                if (!isProcessing) {
+                    processSingleFrame();
+                }
+                updateStatus("Color selected from picker.", "text-green-400");
+            });
+
+            // Canvas click for color pick
+            const canvas = document.getElementById('canvas-out');
+            canvas.addEventListener('click', (e) => {
+                if (!pickMode) return;
+                if (isProcessing) {
+                    pickMode = false;
+                    updateStatus("Processing must be paused to pick color.", "text-red-400");
+                    return;
+                }
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.floor(e.clientX - rect.left);
+                const y = Math.floor(e.clientY - rect.top);
+                if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return;
+
+                // Read current frame and get HSV
+                cap.read(srcMat);
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                const h = hsvMat.ucharPtr(y, x)[0];
+                const s = hsvMat.ucharPtr(y, x)[1];
+                const v = hsvMat.ucharPtr(y, x)[2];
+
+                // Set sliders with range
+                const deltaH = 10;
+                const deltaSV = 50;
+                const hMin = Math.max(0, h - deltaH);
+                const hMax = Math.min(179, h + deltaH);
+                const sMin = Math.max(0, s - deltaSV);
+                const sMax = Math.min(255, s + deltaSV);
+                const vMin = Math.max(0, v - deltaSV);
+                const vMax = Math.min(255, v + deltaSV);
+
+                document.getElementById('h-min').value = hMin;
+                document.getElementById('h-max').value = hMax;
+                document.getElementById('s-min').value = sMin;
+                document.getElementById('s-max').value = sMax;
+                document.getElementById('v-min').value = vMin;
+                document.getElementById('v-max').value = vMax;
+
+                // Update value displays
+                document.getElementById('h-min-val').textContent = hMin;
+                document.getElementById('h-max-val').textContent = hMax;
+                document.getElementById('s-min-val').textContent = sMin;
+                document.getElementById('s-max-val').textContent = sMax;
+                document.getElementById('v-min-val').textContent = vMin;
+                document.getElementById('v-max-val').textContent = vMax;
+
+                // Process and show updated frame
+                processSingleFrame();
+
+                pickMode = false;
+                updateStatus("Color picked. Adjust sliders if needed.", "text-green-400");
+            });
+
+            // Video seek slider
+            const seekSlider = document.getElementById('video-seek');
+            video.addEventListener('loadedmetadata', () => {
+                seekSlider.max = video.duration;
+            });
+            video.addEventListener('timeupdate', () => {
+                seekSlider.value = video.currentTime;
+            });
+            seekSlider.addEventListener('input', () => {
+                video.currentTime = seekSlider.value;
+                if (!isProcessing) {
+                    processSingleFrame();
+                }
+            });
+
+            // Update slider value displays
+            const sliders = [
+                'h-min', 'h-max', 's-min', 's-max', 'v-min', 'v-max', 'min-size'
+            ];
+            sliders.forEach(id => {
+                document.getElementById(id).addEventListener('input', (e) => {
+                    let valId = id.replace('-', '_') + '_val'; // h-min -> h_min_val
+                    if (id === 'min-size') valId = 'size-val'; // special case
+                    if(document.getElementById(valId)) {
+                        document.getElementById(valId).textContent = e.target.value;
+                    }
+                    if (!isProcessing) {
+                        processSingleFrame();
+                    }
+                });
+            });
+        }
+
+        // --- Processing Functions ---
+
+        function startProcessing() {
+            isProcessing = true;
+            video.play();
+            updateStatus("Processing...", "text-sky-400");
+            document.getElementById('start-btn').textContent = "Pause";
+            document.getElementById('start-btn').classList.replace('bg-green-600', 'bg-yellow-600');
+            document.getElementById('start-btn').classList.replace('hover:bg-green-700', 'hover:bg-yellow-700');
+            
+            // Start the processing loop
+            then = Date.now();
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        function pauseProcessing() {
+            isProcessing = false;
+            video.pause();
+            updateStatus("Paused. Press Start to resume.", "text-yellow-400");
+            document.getElementById('start-btn').textContent = "Start";
+            document.getElementById('start-btn').classList.replace('bg-yellow-600', 'bg-green-600');
+            document.getElementById('start-btn').classList.replace('hover:bg-yellow-700', 'hover:bg-green-700');
+        }
+
+        function processVideoFrame() {
+            // Stop if paused
+            if (!isProcessing) {
+                return;
+            }
+
+            // --- Limit FPS ---
+            now = Date.now();
+            elapsed = now - then;
+            let frameInterval = 1000 / fps;
+
+            // if enough time has elapsed, draw the next frame
+            if (elapsed > frameInterval) {
+                then = now - (elapsed % frameInterval);
+                processSingleFrame();
+            }
+
+            // Schedule the next frame
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        function processSingleFrame() {
+            try {
+                // --- Core OpenCV Logic ---
+
+                // 1. Read a frame from the video
+                cap.read(srcMat);
+                
+                // 2. Convert from RGBA (from canvas) to RGB, then to HSV
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                // 3. Get slider values
+                const hMin = parseInt(document.getElementById('h-min').value, 10);
+                const hMax = parseInt(document.getElementById('h-max').value, 10);
+                const sMin = parseInt(document.getElementById('s-min').value, 10);
+                const sMax = parseInt(document.getElementById('s-max').value, 10);
+                const vMin = parseInt(document.getElementById('v-min').value, 10);
+                const vMax = parseInt(document.getElementById('v-max').value, 10);
+                const minSize = parseInt(document.getElementById('min-size').value, 10);
+
+                // 4. Define lower and upper color bounds as Mats
+                let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
+                let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
+
+                // 5. Create the color mask
+                // Find pixels that are within the [low, high] range
+                cv.inRange(hsvMat, lowMat, highMat, maskMat);
+
+                // Delete temporary Mats
+                lowMat.delete();
+                highMat.delete();
+
+                // 6. Clear previous contours
+                for (let i = 0; i < contours.size(); ++i) {
+                    contours.get(i).delete();
+                }
+                contours.delete();
+                contours = new cv.MatVector();
+
+                // Find contours (blobs) in the mask
+                cv.findContours(maskMat, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                // 7. Loop over contours and draw boxes
+                let detectionCount = 0;
+                for (let i = 0; i < contours.size(); ++i) {
+                    const contour = contours.get(i);
+                    const area = cv.contourArea(contour, false);
+
+                    // 8. Filter by size
+                    if (area > minSize) {
+                        detectionCount++;
+                        // Get bounding box
+                        let rect = cv.boundingRect(contour);
+                        
+                        // Draw rectangle on the *original* source image (srcMat)
+                        let p1 = new cv.Point(rect.x, rect.y);
+                        let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                        // Draw in bright red (RGBA)
+                        cv.rectangle(srcMat, p1, p2, [255, 0, 0, 255], 2, cv.LINE_AA, 0);
+                    }
+                }
+
+                // 9. Display the processed frame (srcMat) to the canvas
+                cv.imshow('canvas-out', srcMat);
+
+            } catch (err) {
+                console.error("OpenCV processing error:", err);
+                pauseProcessing();
+                updateStatus(`Error: ${err.message}. Processing stopped.`, "text-red-400");
+            }
+        }
+        
+        function updateStatus(message, colorClass) {
+            const statusEl = document.getElementById('status-msg');
+            statusEl.textContent = `Status: ${message}`;
+            statusEl.className = `mb-4 ${colorClass}`;
+        }
+    </script>
+</body>
+</html>
