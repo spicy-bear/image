@@ -262,7 +262,7 @@
             <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6" id="analysis-section">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-xl font-semibold">Color Analysis</h2>
-                    <div class="flex gap-2 flex-wrap">
+                    <div class="flex gap-2">
                         <button id="analyze-current-frame-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">
                             Analyze Current Frame
                         </button>
@@ -271,9 +271,6 @@
                         </button>
                         <button id="use-as-exclusion-btn" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
                             Use as Exclusion
-                        </button>
-                        <button id="clear-exclusion-btn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                            Clear Exclusion
                         </button>
                     </div>
                 </div>
@@ -759,22 +756,6 @@
             document.getElementById('analyze-current-frame-btn').addEventListener('click', analyzeCurrentFrame);
             document.getElementById('analyze-whole-video-btn').addEventListener('click', analyzeWholeVideo);
             document.getElementById('use-as-exclusion-btn').addEventListener('click', useAnalysisAsExclusion);
-
-            document.getElementById('clear-exclusion-btn').addEventListener('click', () => {
-                // Clear the terrain baseline
-                terrainBaseline = null;
-                useSmartFilter = false;
-                document.getElementById('enable-smart-filter').checked = false;
-                document.getElementById('terrain-info').classList.add('hidden');
-                document.getElementById('clear-exclusion-btn').classList.add('hidden');
-
-                updateStatus("Color exclusion cleared.", "text-green-400");
-
-                // Reprocess current frame
-                if (!isProcessing) {
-                    processSingleFrame();
-                }
-            });
 
             // Color exclusion checkboxes
             document.querySelectorAll('.exclude-color-check').forEach(checkbox => {
@@ -1433,10 +1414,9 @@
                 `;
                 infoEl.classList.remove('hidden');
 
-                // Enable smart filter and show clear button
+                // Enable smart filter
                 document.getElementById('enable-smart-filter').checked = true;
                 useSmartFilter = true;
-                document.getElementById('clear-exclusion-btn').classList.remove('hidden');
                 updateSettingsIndicator();
 
                 updateStatus("Current frame set as exclusion baseline. Smart filter enabled. Reprocessing...", "text-green-400");
@@ -1747,34 +1727,18 @@
             currentModalIndex = index;
             const detection = batchDetections[index];
 
-            console.log(`[DEBUG] openDetectionModal called with index ${index}, frame ${detection.frame}, time ${detection.time}`);
-            console.log(`[DEBUG] isProcessing=${isProcessing}, video exists=${!!video}`);
-
-            // Seek video to this frame's time and update main canvas
-            if (video) {
-                // Pause processing temporarily if it's running
-                const wasProcessing = isProcessing;
-                if (wasProcessing) {
-                    isProcessing = false;
-                    video.pause();
-                }
-
-                console.log(`[DEBUG] Setting up seeked event listener, seeking from ${video.currentTime} to ${detection.time}`);
+            // Seek video to this frame's time
+            if (!isProcessing && video) {
                 const onSeekForModal = () => {
                     video.removeEventListener('seeked', onSeekForModal);
-                    console.log(`[DEBUG] Seeked event fired, currentTime now=${video.currentTime}`);
                     try {
-                        console.log(`[DEBUG] Calling processSingleFrame() to update main canvas`);
                         processSingleFrame();
-                        console.log(`[DEBUG] processSingleFrame() completed`);
                     } catch (err) {
                         console.error("Error processing frame for modal:", err);
                     }
                 };
                 video.addEventListener('seeked', onSeekForModal, { once: true });
                 video.currentTime = detection.time;
-            } else {
-                console.warn(`[DEBUG] Skipping video seek: video does not exist`);
             }
 
             showDetectionInModal(index);
@@ -1821,13 +1785,11 @@
                 currentModalIndex = newIndex;
                 const detection = batchDetections[newIndex];
 
-                // Seek video to this frame's time and update main canvas
-                if (video) {
-                    // Processing should already be paused from openDetectionModal
+                // Seek video to this frame's time
+                if (!isProcessing && video) {
                     const onSeekNav = () => {
                         video.removeEventListener('seeked', onSeekNav);
                         try {
-                            console.log(`[DEBUG] navigateModal: processing frame ${detection.frame} at time ${detection.time}`);
                             processSingleFrame();
                         } catch (err) {
                             console.error("Error processing frame during navigation:", err);
@@ -1857,7 +1819,7 @@
                 return;
             }
 
-            batchDetections.forEach((frameData, idx) => {
+            batchDetections.forEach(frameData => {
                 const frameCard = document.createElement('div');
                 frameCard.className = 'bg-gray-800 rounded overflow-hidden hover:ring-2 hover:ring-sky-400 transition-all cursor-pointer';
 
@@ -1894,7 +1856,6 @@
 
                 // Click handler to open in modal
                 frameCard.addEventListener('click', () => {
-                    console.log(`[DEBUG] Detection card clicked, index=${idx}`);
                     openDetectionModal(idx);
                 });
 
@@ -2011,9 +1972,6 @@
                             </div>
                         `;
                         infoEl.classList.remove('hidden');
-
-                        // Show clear button
-                        document.getElementById('clear-exclusion-btn').classList.remove('hidden');
 
                         updateStatus("Terrain analysis complete! " + (smartFilterEnabled ? "Filter active." : "Enable Smart Filter checkbox to use."), "text-green-400");
                         
