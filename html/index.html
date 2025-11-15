@@ -1,1 +1,2791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAR Color-Range Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
+    <style>
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+            border-radius: 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0ea5e9;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0ea5e9;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Fullscreen modal like Python script -->
+        <div id="canvas-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-50" style="padding-top: 50px;">
+            <span class="close absolute top-4 right-8 text-white text-5xl font-bold cursor-pointer hover:text-gray-300 transition-colors" id="close-modal">&times;</span>
+            <button id="modal-prev" class="hidden absolute left-4 top-1/2 transform -translate-y-1/2 text-white text-6xl font-bold cursor-pointer hover:text-gray-300 transition-colors bg-black bg-opacity-50 px-4 py-2 rounded">‹</button>
+            <button id="modal-next" class="hidden absolute right-4 top-1/2 transform -translate-y-1/2 text-white text-6xl font-bold cursor-pointer hover:text-gray-300 transition-colors bg-black bg-opacity-50 px-4 py-2 rounded">›</button>
+            <canvas id="modal-canvas" class="block mx-auto" style="max-width: 90%; max-height: 90vh; width: auto; height: auto;"></canvas>
+            <div id="modal-info" class="hidden absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black bg-opacity-70 px-4 py-2 rounded"></div>
+        </div>
+        
+        <header class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-sky-400">SAR Color-Range Finder</h1>
+            <p class="text-gray-400">Fast terrain anomaly detection</p>
+        </header>
 
+        <div id="loader" class="text-center p-8">
+            <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-sky-400 motion-reduce:animate-[spin_1.5s_linear_infinite]" role="status">
+                <span class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+            </div>
+            <p class="mt-4 text-lg">Loading OpenCV.js...</p>
+        </div>
+
+        <main id="app-content" class="hidden">
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+                <h2 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Controls</h2>
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+                    <div>
+                        <label for="video-input" class="block text-sm font-medium mb-2">Load Drone Video</label>
+                        <input type="file" id="video-input" accept="video/*" class="block w-full text-sm text-gray-300
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-sky-600 file:text-white
+                            hover:file:bg-sky-700
+                            file:cursor-pointer
+                        ">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
+                <h2 class="text-xl font-semibold mb-2">Detection Methods</h2>
+                <p class="text-sm text-gray-400 mb-4">Enable multiple methods for comprehensive detection</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="enable-hsv" class="w-5 h-5">
+                        <span class="text-green-400">HSV Color Range</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="enable-sat" class="w-5 h-5">
+                        <span class="text-purple-400">High Saturation</span>
+                    </label>
+                </div>
+                
+                <div class="bg-gray-700 p-3 rounded mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="enable-smart-filter" class="w-5 h-5">
+                            <span class="text-orange-400 font-semibold">Smart Terrain Filter (Reduce Noise)</span>
+                        </label>
+                        <button id="analyze-terrain-btn" class="bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold py-1 px-3 rounded">
+                            Analyze Terrain
+                        </button>
+                    </div>
+                    <div class="mb-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300">Filter Strength (std devs)</span>
+                            <span class="text-orange-300" id="filter-strength-val">1.5</span>
+                        </div>
+                        <input type="range" id="filter-strength" min="0.5" max="3.0" step="0.1" value="1.5" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>More detections</span>
+                            <span>Less noise</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400">Analyzes video to learn terrain colors, then filters out detections that match common terrain hues/saturation. Lower = more aggressive filtering.</p>
+                    <div id="terrain-info" class="text-xs text-gray-300 mt-2 hidden"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <!-- HSV Controls -->
+                    <div id="hsv-controls">
+                        <h3 class="text-lg font-medium text-green-400 mb-2">HSV Color Ranges</h3>
+
+                        <!-- HSV Option 1 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-green-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv1-enabled" class="w-4 h-4" checked>
+                                    <span class="font-semibold text-green-400">HSV Option 1</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv1-h-min-val">0</span> - <span id="hsv1-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv1-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv1-s-min-val">150</span> - <span id="hsv1-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv1-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv1-v-min-val">100</span> - <span id="hsv1-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv1-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv1-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv1-size-min-val">200</span> - <span id="hsv1-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv1-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv1-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HSV Option 2 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-blue-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv2-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-blue-400">HSV Option 2</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv2-h-min-val">0</span> - <span id="hsv2-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv2-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv2-s-min-val">150</span> - <span id="hsv2-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv2-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv2-v-min-val">100</span> - <span id="hsv2-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv2-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv2-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv2-size-min-val">200</span> - <span id="hsv2-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv2-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv2-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HSV Option 3 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-cyan-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv3-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-cyan-400">HSV Option 3</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv3-h-min-val">0</span> - <span id="hsv3-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv3-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv3-s-min-val">150</span> - <span id="hsv3-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv3-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv3-v-min-val">100</span> - <span id="hsv3-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv3-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv3-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv3-size-min-val">200</span> - <span id="hsv3-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv3-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv3-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HSV Exclusion -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-red-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv-exclusion-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-red-400">HSV Exclusion (ignore this range)</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv-ex-h-min-val">0</span> - <span id="hsv-ex-h-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-h-max" min="0" max="179" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv-ex-s-min-val">0</span> - <span id="hsv-ex-s-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-s-min" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-s-max" min="0" max="255" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv-ex-v-min-val">0</span> - <span id="hsv-ex-v-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-v-min" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-v-max" min="0" max="255" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv-ex-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Saturation Controls moved from below -->
+                    <div id="sat-controls">
+                        <h3 class="text-lg font-medium text-purple-400 mb-2">High Saturation Settings</h3>
+                        
+                        <div class="mb-3 p-3 bg-gray-800 border border-purple-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold text-purple-400 text-sm">Saturation Detection</span>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>Saturation Range</span>
+                                        <span><span id="sat-min-val">200</span> - <span id="sat-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="sat-min" min="50" max="255" value="200" class="flex-1">
+                                        <input type="range" id="sat-max" min="50" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Saturation Preview:</div>
+                                <canvas id="sat-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="sat-size-min-val">200</span> - <span id="sat-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="sat-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="sat-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+
+            </div>
+
+            <!-- Color Analysis Section -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6" id="analysis-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Color Analysis</h2>
+                    <div class="flex gap-2">
+                        <button id="analyze-current-frame-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Analyze Current Frame
+                        </button>
+                        <button id="analyze-whole-video-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Analyze Whole Video
+                        </button>
+                        <button id="use-as-exclusion-btn" class="hidden bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Use as Exclusion
+                        </button>
+                    </div>
+                </div>
+                <div id="analysis-chart-container" class="hidden">
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Hue Distribution</h4>
+                        <canvas id="color-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Saturation Distribution</h4>
+                        <canvas id="saturation-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Value Distribution</h4>
+                        <canvas id="value-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
+                    <div id="analysis-stats" class="mt-3 text-sm grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+                </div>
+                <p id="analysis-status" class="text-sm text-gray-400">Click a button above to analyze colors</p>
+            </div>
+
+            <!-- Batch Processing Section -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6" id="batch-section">
+                <h2 class="text-xl font-semibold mb-4">Batch Processing</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="text-sm font-medium mb-2 block">Detection Mode</label>
+                        <select id="detection-mode" class="w-full bg-gray-700 text-white p-2 rounded">
+                            <option value="manual">Manual Settings</option>
+                            <option value="smart" selected>Smart Auto-Detect</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium mb-2 block">Sample Every N Frames</label>
+                        <select id="frame-sample-rate" class="w-full bg-gray-700 text-white p-2 rounded">
+                            <option value="1">Every Frame (Slow)</option>
+                            <option value="5">Every 5 Frames</option>
+                            <option value="10" selected>Every 10 Frames (Balanced)</option>
+                            <option value="15">Every 15 Frames</option>
+                            <option value="30">Every 30 Frames (Fast)</option>
+                            <option value="60">Every 60 Frames</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 flex items-end gap-2">
+                        <button id="quick-analyze-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Quick Analyze
+                        </button>
+                        <button id="batch-process-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded flex-1 transition-colors">
+                            Process All Frames
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Current Settings Indicator -->
+                <div id="current-settings-indicator" class="bg-blue-900 border border-blue-500 p-3 rounded mb-4 text-xs">
+                    <div class="text-blue-300 font-semibold mb-2">📊 Current Detection Settings (will be used for batch):</div>
+                    <div class="grid grid-cols-2 gap-2 text-gray-300">
+                        <div><strong>HSV Enabled:</strong> <span id="ind-hsv-enabled">Yes</span></div>
+                        <div><strong>Sat Enabled:</strong> <span id="ind-sat-enabled">No</span></div>
+                        <div><strong>Hue Range:</strong> <span id="ind-hue-range">100-130</span></div>
+                        <div><strong>Sat Range:</strong> <span id="ind-sat-range">150-255</span></div>
+                        <div><strong>Smart Filter:</strong> <span id="ind-smart-filter">Off</span></div>
+                        <div><strong>Size Range:</strong> <span id="ind-size-range">200-20000px</span></div>
+                    </div>
+                </div>
+
+                <div id="smart-settings-info" class="hidden bg-gray-700 p-3 rounded mb-4 text-xs">
+                    <div class="text-orange-400 font-semibold mb-1">Smart Detection Settings:</div>
+                    <div id="smart-settings-text" class="text-gray-300"></div>
+                </div>
+                <div id="batch-progress" class="hidden mb-3">
+                    <div class="w-full bg-gray-700 rounded-full h-4">
+                        <div id="batch-progress-bar" class="bg-purple-600 h-4 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                    <p id="batch-progress-text" class="text-xs text-gray-400 mt-1">Processing...</p>
+                </div>
+                <div id="detection-list-container" class="hidden">
+                    <h3 class="text-lg font-semibold mb-2">Detection Results</h3>
+                    <div id="detection-list" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto bg-gray-900 rounded p-3"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="hidden">
+                    <video id="video-in" controls></video>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-lg shadow-lg col-span-1 md:col-span-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Processed Output</h2>
+                        <button id="start-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200">
+                            ▶ Start
+                        </button>
+                    </div>
+                    <p id="status-msg" class="text-sky-400 mb-2 text-sm">Status: Waiting for video file...</p>
+                    <p class="text-xs text-gray-400 mb-2">Click image to view fullscreen</p>
+                    <div class="aspect-video bg-gray-900 rounded overflow-hidden relative">
+                        <canvas id="canvas-out" style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;"></canvas>
+                    </div>
+                    <div class="mt-4">
+                        <input type="range" id="video-seek" min="0" max="100" value="0" class="w-full">
+                    </div>
+                    <div id="detection-stats" class="mt-4 grid grid-cols-3 gap-4 text-center">
+                        <div class="bg-gray-700 p-3 rounded">
+                            <div class="text-green-400 text-2xl font-bold" id="hsv-count">0</div>
+                            <div class="text-xs text-gray-400">HSV</div>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded">
+                            <div class="text-purple-400 text-2xl font-bold" id="sat-count">0</div>
+                            <div class="text-xs text-gray-400">High Sat</div>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded">
+                            <div class="text-sky-400 text-2xl font-bold" id="total-count">0</div>
+                            <div class="text-xs text-gray-400">Total</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        let video;
+        let videoStream;
+        let cap;
+        let srcMat, rgbMat, hsvMat, maskMat, contours, hierarchy;
+        let isProcessing = false;
+        let fps = 30;
+        let elapsed;
+        let then;
+        let now;
+
+        // Terrain baseline for smart filtering
+        let terrainBaseline = null;
+        let useSmartFilter = false;
+        let isSeekingSuppressed = false;
+        let isProgrammaticChange = false; // Flag to prevent cascading processSingleFrame calls
+
+        // Batch processing state
+        let batchDetections = [];
+        let colorAnalysisData = null;
+        let activePresetButton = null;
+        let excludedColorRanges = []; // Array of {min, max} hue ranges to exclude
+
+        function initMatsIfReady() {
+            if (video.videoWidth > 0 && video.videoHeight > 0) {
+                const canvas = document.getElementById('canvas-out');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                video.width = video.videoWidth;
+                video.height = video.videoHeight;
+
+                if (srcMat) {
+                    srcMat.delete();
+                    rgbMat.delete();
+                    hsvMat.delete();
+                    maskMat.delete();
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) {
+                            contours.get(i).delete();
+                        }
+                        contours.delete();
+                    }
+                    hierarchy.delete();
+                }
+
+                srcMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
+                rgbMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                hsvMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                maskMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
+                contours = new cv.MatVector();
+                hierarchy = new cv.Mat();
+
+                cap = new cv.VideoCapture(video);
+
+                cap.read(srcMat);
+                cv.imshow('canvas-out', srcMat);
+
+                updateStatus("Ready to process. Press Start.", "text-green-400");
+            }
+        }
+
+        function onOpenCvReady() {
+            console.log("OpenCV.js is ready.");
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            
+            video = document.getElementById('video-in');
+            
+            document.getElementById('video-input').addEventListener('change', (e) => {
+                if (isProcessing) {
+                    pauseProcessing();
+                }
+                
+                // Clean up old resources
+                if (cap) {
+                    cap.delete();
+                    cap = null;
+                }
+                if (srcMat) {
+                    srcMat.delete();
+                    rgbMat.delete();
+                    hsvMat.delete();
+                    maskMat.delete();
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) {
+                            contours.get(i).delete();
+                        }
+                        contours.delete();
+                    }
+                    hierarchy.delete();
+                }
+                
+                // Reset terrain baseline
+                terrainBaseline = null;
+                useSmartFilter = false;
+                document.getElementById('enable-smart-filter').checked = false;
+                document.getElementById('terrain-info').classList.add('hidden');
+                
+                const file = e.target.files[0];
+                if (!file) return;
+
+                updateStatus("Loading video...", "text-blue-400");
+
+                const url = URL.createObjectURL(file);
+                video.src = url;
+                video.loop = true;
+                video.muted = true; // Required for autoplay on mobile
+                video.playsInline = true; // Required for iOS
+
+                video.onloadedmetadata = () => {
+                    updateStatus("Video loaded! Initializing OpenCV...", "text-green-400");
+                    initMatsIfReady();
+                };
+
+                video.onerror = (err) => {
+                    console.error("Video load error:", err);
+                    updateStatus("Error loading video. Try a different format (MP4 recommended).", "text-red-400");
+                };
+
+                video.load();
+            });
+
+            document.getElementById('start-btn').addEventListener('click', () => {
+                if (!video.src) {
+                    updateStatus("Please load a video file first.", "text-red-400");
+                    return;
+                }
+                
+                if (isProcessing) {
+                    pauseProcessing();
+                } else {
+                    startProcessing();
+                }
+            });
+            
+            document.getElementById('analyze-terrain-btn').addEventListener('click', () => {
+                if (!video.src) {
+                    updateStatus("Please load a video first.", "text-red-400");
+                    return;
+                }
+                analyzeTerrain();
+            });
+            
+            document.getElementById('enable-smart-filter').addEventListener('change', (e) => {
+                useSmartFilter = e.target.checked;
+                if (useSmartFilter && !terrainBaseline) {
+                    alert('Please click "Analyze Terrain" first to build the baseline.');
+                    e.target.checked = false;
+                    useSmartFilter = false;
+                }
+            });
+            
+            // Simple modal like Python script
+            const canvas = document.getElementById('canvas-out');
+            const modal = document.getElementById('canvas-modal');
+            const modalCanvas = document.getElementById('modal-canvas');
+            const closeBtn = document.getElementById('close-modal');
+
+            canvas.addEventListener('click', () => {
+                modalCanvas.width = canvas.width;
+                modalCanvas.height = canvas.height;
+                const ctx = modalCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, 0);
+                modal.classList.remove('hidden');
+            });
+
+            closeBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                document.getElementById('modal-prev').classList.add('hidden');
+                document.getElementById('modal-next').classList.add('hidden');
+                document.getElementById('modal-info').classList.add('hidden');
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    document.getElementById('modal-prev').classList.add('hidden');
+                    document.getElementById('modal-next').classList.add('hidden');
+                    document.getElementById('modal-info').classList.add('hidden');
+                }
+            });
+
+            // Modal navigation buttons
+            document.getElementById('modal-prev').addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateModal(-1);
+            });
+
+            document.getElementById('modal-next').addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateModal(1);
+            });
+
+            // Keyboard navigation for modal
+            document.addEventListener('keydown', (e) => {
+                const modal = document.getElementById('canvas-modal');
+                if (!modal.classList.contains('hidden')) {
+                    if (e.key === 'ArrowLeft') {
+                        navigateModal(-1);
+                    } else if (e.key === 'ArrowRight') {
+                        navigateModal(1);
+                    } else if (e.key === 'Escape') {
+                        modal.classList.add('hidden');
+                        document.getElementById('modal-prev').classList.add('hidden');
+                        document.getElementById('modal-next').classList.add('hidden');
+                        document.getElementById('modal-info').classList.add('hidden');
+                    }
+                }
+            });
+
+            const sliders = [
+                'hsv1-min-size', 'hsv1-max-size',
+                'hsv2-min-size', 'hsv2-max-size',
+                'hsv3-min-size', 'hsv3-max-size',
+                'sat-min', 'sat-max', 'sat-min-size', 'sat-max-size'
+            ];
+            sliders.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        let valId = id + '-val';
+                        if (id === 'hsv1-min-size') valId = 'hsv1-size-min-val';
+                        if (id === 'hsv1-max-size') valId = 'hsv1-size-max-val';
+                        if (id === 'hsv2-min-size') valId = 'hsv2-size-min-val';
+                        if (id === 'hsv2-max-size') valId = 'hsv2-size-max-val';
+                        if (id === 'hsv3-min-size') valId = 'hsv3-size-min-val';
+                        if (id === 'hsv3-max-size') valId = 'hsv3-size-max-val';
+                        if (id === 'sat-min-size') valId = 'sat-size-min-val';
+                        if (id === 'sat-max-size') valId = 'sat-size-max-val';
+
+                    if(document.getElementById(valId)) {
+                        document.getElementById(valId).textContent = e.target.value;
+                    }
+
+
+                    if (!isProcessing && !isProgrammaticChange) {
+                        processSingleFrame();
+                    }
+                    });
+                }
+            });
+
+            // Filter strength slider - update display only, don't reprocess
+            document.getElementById('filter-strength').addEventListener('input', (e) => {
+                document.getElementById('filter-strength-val').textContent = e.target.value;
+            });
+
+            // Color preset buttons with toggle
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Toggle: if clicking the same button, deselect it
+                    if (activePresetButton === btn) {
+                        // Deselect
+                        btn.classList.remove('ring-2', 'ring-white');
+                        activePresetButton = null;
+                        updateColorPreviews();
+                        updateSettingsIndicator();
+                        if (!isProcessing) {
+                            processSingleFrame();
+                        }
+                        return;
+                    }
+
+                    // Deselect previous button
+                    if (activePresetButton) {
+                        activePresetButton.classList.remove('ring-2', 'ring-white');
+                    }
+
+                    // Select new button
+                    activePresetButton = btn;
+                    btn.classList.add('ring-2', 'ring-white');
+
+                    const hueMin = parseInt(btn.dataset.hueMin);
+                    const hueMax = parseInt(btn.dataset.hueMax);
+
+                    // Set flag to prevent cascading processSingleFrame calls
+                    isProgrammaticChange = true;
+
+                    // Update HSV Option 1 with preset values
+                    document.getElementById('hsv1-h-min').value = hueMin;
+                    document.getElementById('hsv1-h-max').value = hueMax;
+                    document.getElementById('hsv1-s-min').value = 150;
+                    document.getElementById('hsv1-s-max').value = 255;
+                    document.getElementById('hsv1-v-min').value = 100;
+                    document.getElementById('hsv1-v-max').value = 255;
+                    document.getElementById('enable-hsv').checked = true;
+                    document.getElementById('hsv1-enabled').checked = true;
+
+                    // Clear flag
+                    isProgrammaticChange = false;
+
+                    updateColorPreviews();
+                    updateSettingsIndicator();
+                    if (!isProcessing) {
+                        processSingleFrame();
+                    }
+                });
+            });
+
+            // Color preview canvases
+            updateColorPreviews();
+            ['sat-min', 'sat-max'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        // Update value display
+                        const valEl = document.getElementById(`${id}-val`);
+                        if (valEl) {
+                            valEl.textContent = e.target.value;
+                        }
+                        
+                        // Update preview
+                        updateSaturationPreview();
+                        
+                        // Reprocess if not processing
+                        if (!isProcessing && !isProgrammaticChange) {
+                            processSingleFrame();
+                        }
+                    });
+                }
+            });            
+            // ['sat-min', 'sat-max'].forEach(id => {
+            //     const el = document.getElementById(id);
+            //     if (el) el.addEventListener('input', updateColorPreviews);
+            // });
+
+            // Add event listeners for HSV option inputs (1, 2, 3)
+            const hsvOptionInputs = [
+                { ids: ['hsv1-h-min', 'hsv1-h-max', 'hsv1-s-min', 'hsv1-s-max', 'hsv1-v-min', 'hsv1-v-max'], prefix: 'hsv1' },
+                { ids: ['hsv2-h-min', 'hsv2-h-max', 'hsv2-s-min', 'hsv2-s-max', 'hsv2-v-min', 'hsv2-v-max'], prefix: 'hsv2' },
+                { ids: ['hsv3-h-min', 'hsv3-h-max', 'hsv3-s-min', 'hsv3-s-max', 'hsv3-v-min', 'hsv3-v-max'], prefix: 'hsv3' }
+            ];
+
+            hsvOptionInputs.forEach(option => {
+                option.ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('input', () => {
+                            // Update value display
+                            const valEl = document.getElementById(`${id}-val`);
+                            if (valEl) {
+                                valEl.textContent = el.value;
+                            }
+
+                            // Only update this option's preview
+                            updateHSVPreview(option.prefix);
+                            if (!isProcessing && !isProgrammaticChange) {
+                                processSingleFrame();
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Add separate event listeners for HSV exclusion inputs
+            const hsvExclusionIds = [
+                'hsv-ex-h-min', 'hsv-ex-h-max', 'hsv-ex-s-min', 'hsv-ex-s-max', 'hsv-ex-v-min', 'hsv-ex-v-max'
+            ];
+            hsvExclusionIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        // Update value display
+                        const valEl = document.getElementById(`${id}-val`);
+                        if (valEl) {
+                            valEl.textContent = el.value;
+                        }
+
+                        // Only update exclusion preview
+                        updateHSVPreview('hsv-ex');
+                        if (!isProcessing && !isProgrammaticChange) {
+                            processSingleFrame();
+                        }
+                    });
+                }
+            });
+
+            // Batch processing button
+            document.getElementById('batch-process-btn').addEventListener('click', batchProcessVideo);
+
+            // Quick analyze button
+            document.getElementById('quick-analyze-btn').addEventListener('click', quickAnalyzeAndConfigure);
+
+            // Analysis buttons
+            document.getElementById('analyze-current-frame-btn').addEventListener('click', analyzeCurrentFrame);
+            document.getElementById('analyze-whole-video-btn').addEventListener('click', analyzeWholeVideo);
+            document.getElementById('use-as-exclusion-btn').addEventListener('click', useAnalysisAsExclusion);
+
+            // Color exclusion checkboxes
+            document.querySelectorAll('.exclude-color-check').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    // Update excluded ranges
+                    excludedColorRanges = [];
+                    document.querySelectorAll('.exclude-color-check:checked').forEach(cb => {
+                        excludedColorRanges.push({
+                            min: parseInt(cb.dataset.hueMin),
+                            max: parseInt(cb.dataset.hueMax)
+                        });
+                    });
+                    console.log('Excluded color ranges:', excludedColorRanges);
+
+                    // Reprocess current frame
+                    if (!isProcessing) {
+                        processSingleFrame();
+                    }
+                });
+            });
+
+            // Update settings indicator whenever settings change
+            document.getElementById('enable-hsv').addEventListener('change', updateSettingsIndicator);
+            document.getElementById('enable-sat').addEventListener('change', updateSettingsIndicator);
+            document.getElementById('enable-smart-filter').addEventListener('change', updateSettingsIndicator);
+            ['hsv-min-size', 'hsv-max-size'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', updateSettingsIndicator);
+            });
+            updateSettingsIndicator(); // Initial update
+
+            // Detection mode change listener
+            document.getElementById('detection-mode').addEventListener('change', () => {
+                updateSettingsIndicator();
+                const mode = document.getElementById('detection-mode').value;
+                if (mode === 'smart') {
+                    updateStatus("Smart mode selected. Click 'Quick Analyze' to auto-configure settings.", "text-indigo-400");
+                } else {
+                    updateStatus("Manual mode selected. Adjust settings manually or use preset buttons.", "text-blue-400");
+                }
+            });
+
+            // Video seek slider
+            document.getElementById('video-seek').addEventListener('input', (e) => {
+                if (!video || !video.duration || isSeekingSuppressed) return;
+
+                const seekPercent = parseFloat(e.target.value);
+                const seekTime = (seekPercent / 100) * video.duration;
+                video.currentTime = seekTime;
+
+                if (!isProcessing) {
+                    const onSeekedHandler = () => {
+                        video.removeEventListener('seeked', onSeekedHandler);
+                        processSingleFrame();
+                    };
+                    video.addEventListener('seeked', onSeekedHandler, { once: true });
+                }
+            });
+
+            // Update slider when video time changes
+            video.addEventListener('timeupdate', () => {
+                if (!isSeekingSuppressed && video.duration) {
+                    const percent = (video.currentTime / video.duration) * 100;
+                    document.getElementById('video-seek').value = percent;
+                }
+            });
+        }
+
+        function quickAnalyzeAndConfigure() {
+            if (!video || !video.videoWidth) {
+                alert('Please load a video first');
+                return;
+            }
+
+            if (isProcessing) {
+                alert('Please pause video processing first');
+                return;
+            }
+
+            updateStatus("Quick analyzing video for smart detection...", "text-indigo-400");
+
+            // First analyze terrain if not done
+            if (!terrainBaseline) {
+                analyzeTerrain();
+                // Wait for terrain analysis to complete, then continue
+                const checkInterval = setInterval(() => {
+                    if (terrainBaseline) {
+                        clearInterval(checkInterval);
+                        performSmartAnalysis();
+                    }
+                }, 500);
+            } else {
+                performSmartAnalysis();
+            }
+        }
+
+        function performSmartAnalysis() {
+            const savedTime = video.currentTime;
+            isSeekingSuppressed = true;
+
+            const duration = video.duration;
+            const sampleFrames = 20;
+            const frameStep = duration / sampleFrames;
+
+            let allHues = {};
+            let allSats = [];
+            let frameIndex = 0;
+
+            function sampleNext() {
+                if (frameIndex >= sampleFrames) {
+                    isSeekingSuppressed = false;
+                    video.currentTime = savedTime;
+
+                    // Calculate smart detection parameters
+                    configureSmartDetection(allHues, allSats);
+                    return;
+                }
+
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+
+                    try {
+                        cap.read(srcMat);
+                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                        const h = hsvMat.rows;
+                        const w = hsvMat.cols;
+                        const step = 30;
+
+                        for (let y = 0; y < h; y += step) {
+                            for (let x = 0; x < w; x += step) {
+                                const hue = hsvMat.ucharPtr(y, x)[0];
+                                const sat = hsvMat.ucharPtr(y, x)[1];
+                                const val = hsvMat.ucharPtr(y, x)[2];
+
+                                if (val > 30 && val < 230) {
+                                    allHues[hue] = (allHues[hue] || 0) + 1;
+                                    allSats.push(sat);
+                                }
+                            }
+                        }
+
+                        frameIndex++;
+                        setTimeout(sampleNext, 50);
+                    } catch (err) {
+                        console.error("Error:", err);
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                    }
+                };
+
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(frameIndex * frameStep, duration - 0.1);
+            }
+
+            sampleNext();
+        }
+
+        function configureSmartDetection(hueData, satData) {
+            // Find outlier hues (statistical anomalies)
+            const totalHueCount = Object.values(hueData).reduce((a, b) => a + b, 0);
+            const avgHueCount = totalHueCount / 180;
+            const hueStdDev = Math.sqrt(
+                Object.values(hueData).reduce((sum, count) => sum + Math.pow((count || 0) - avgHueCount, 2), 0) / 180
+            );
+
+            console.log("=== SMART DETECTION ANALYSIS ===");
+            console.log(`Total hue count: ${totalHueCount}, Average per hue: ${avgHueCount.toFixed(1)}, Std Dev: ${hueStdDev.toFixed(1)}`);
+            if (terrainBaseline) {
+                console.log(`Terrain baseline - Hue: ${terrainBaseline.hueMean.toFixed(1)} ± ${terrainBaseline.hueStd.toFixed(1)}, Sat: ${terrainBaseline.satMean.toFixed(1)} ± ${terrainBaseline.satStd.toFixed(1)}`);
+            }
+
+            // Find hues that are significantly above average (potential targets)
+            const significantHues = [];
+            for (let h = 0; h < 180; h++) {
+                const count = hueData[h] || 0;
+                const zScore = (count - avgHueCount) / hueStdDev;
+
+                // If this hue is rare (below average) but when it appears, it's significant
+                // OR if terrain baseline exists, find hues outside terrain range
+                if (terrainBaseline) {
+                    // Special handling for red hue wraparound (reds are 0-15 and 165-179)
+                    let hueDiff;
+                    if (h <= 15 || h >= 165) {
+                        // Red zone - calculate circular distance
+                        const redCenter = 0; // or 179
+                        if (h <= 15) {
+                            hueDiff = Math.min(Math.abs(h - terrainBaseline.hueMean),
+                                             Math.abs((h + 180) - terrainBaseline.hueMean));
+                        } else {
+                            hueDiff = Math.min(Math.abs(h - terrainBaseline.hueMean),
+                                             Math.abs((h - 180) - terrainBaseline.hueMean));
+                        }
+                    } else {
+                        hueDiff = Math.abs(h - terrainBaseline.hueMean);
+                    }
+
+                    const hueSigma = hueDiff / terrainBaseline.hueStd;
+
+                    // VERY AGGRESSIVE: 1.0 std dev and only 1% frequency (was 1.5 and 3%)
+                    if (hueSigma > 1.0 && count > avgHueCount * 0.01) {
+                        significantHues.push({ hue: h, score: hueSigma, count: count });
+                        console.log(`  Anomaly found at hue ${h} (${getColorName(h)}): ${hueSigma.toFixed(2)}σ, count: ${count}`);
+                    }
+                } else if (zScore > 0.5) {
+                    // Without terrain baseline, be VERY sensitive (was 1.0)
+                    significantHues.push({ hue: h, score: zScore, count: count });
+                    console.log(`  Prominent hue at ${h} (${getColorName(h)}): z-score ${zScore.toFixed(2)}, count: ${count}`);
+                }
+            }
+
+            // Sort by score, but boost red/orange colors (common SAR targets)
+            significantHues.forEach(h => {
+                // Boost score for red/orange hues (0-25 and 165-179)
+                if ((h.hue >= 0 && h.hue <= 25) || (h.hue >= 165 && h.hue <= 179)) {
+                    h.score *= 1.5; // 50% boost for red/orange
+                    h.isBoosted = true;
+                }
+            });
+            significantHues.sort((a, b) => b.score - a.score);
+
+            console.log(`Found ${significantHues.length} significant hues`);
+            if (significantHues.length > 0) {
+                console.log("ALL anomalies detected:");
+                significantHues.forEach(h => {
+                    console.log(`  ${getColorName(h.hue)} (H${h.hue}) score=${h.score.toFixed(2)}, count=${h.count}`);
+                });
+                console.log("Top 5 anomalies:", significantHues.slice(0, 5).map(h =>
+                    `${getColorName(h.hue)} (H${h.hue}) score=${h.score.toFixed(2)}`));
+            }
+
+            // Calculate saturation threshold - use 50th percentile (median) for MAXIMUM sensitivity
+            satData.sort((a, b) => a - b);
+            const satP50 = satData[Math.floor(satData.length * 0.50)];
+            const satP60 = satData[Math.floor(satData.length * 0.60)];
+            const satP75 = satData[Math.floor(satData.length * 0.75)];
+            const satP90 = satData[Math.floor(satData.length * 0.90)];
+
+            console.log(`Saturation percentiles - P50: ${satP50}, P60: ${satP60}, P75: ${satP75}, P90: ${satP90}`);
+
+            let settingsText = '';
+
+            if (significantHues.length > 0) {
+                // Configure detection for top anomalous hues
+                const topHues = significantHues.slice(0, 3);
+
+                // Find hue range for top candidate - VERY WIDE range of ±35 for maximum coverage
+                const targetHue = topHues[0].hue;
+                let hueMin, hueMax;
+
+                // Special handling for red hues (wraparound)
+                if (targetHue <= 15) {
+                    // Red at low end
+                    hueMin = 0;
+                    hueMax = Math.min(179, targetHue + 35);
+                } else if (targetHue >= 165) {
+                    // Red at high end
+                    hueMin = Math.max(0, targetHue - 35);
+                    hueMax = 179;
+                } else {
+                    // Normal hue range
+                    hueMin = Math.max(0, targetHue - 35);
+                    hueMax = Math.min(179, targetHue + 35);
+                }
+
+                // Set HSV Option 1 to target this hue range
+                document.getElementById('hsv1-h-min').value = hueMin;
+                document.getElementById('hsv1-h-max').value = hueMax;
+
+                // Use 50th percentile (median) saturation for MAXIMUM sensitivity, minimum of 80
+                const minSat = Math.max(80, satP50);
+                document.getElementById('hsv1-s-min').value = minSat;
+                document.getElementById('hsv1-s-max').value = 255;
+                document.getElementById('hsv1-v-min').value = 100;
+                document.getElementById('hsv1-v-max').value = 255;
+
+                // Enable HSV detection and HSV Option 1
+                document.getElementById('enable-hsv').checked = true;
+                document.getElementById('hsv1-enabled').checked = true;
+
+                // DISABLE smart filter by default - it may be filtering out the target!
+                // User can manually enable if needed
+                document.getElementById('enable-smart-filter').checked = false;
+                useSmartFilter = false;
+
+                const colorName = getColorName(targetHue);
+                settingsText = `Detected anomalous color: <strong>${colorName}</strong> (Hue ${targetHue})<br>`;
+                settingsText += `Target range: H${hueMin}-${hueMax}, S>${minSat}<br>`;
+                settingsText += `Anomaly score: ${topHues[0].score.toFixed(2)}σ from terrain baseline<br>`;
+                settingsText += `<span class="text-yellow-400">⚠ Smart filter DISABLED for max detections - enable manually if too many false positives</span><br>`;
+
+                if (topHues.length > 1) {
+                    settingsText += `Also detected: ${topHues.slice(1).map(h => getColorName(h.hue)).join(', ')}`;
+                }
+
+                console.log(`Configured detection: H${hueMin}-${hueMax}, S>${minSat}`);
+            } else {
+                // Fallback: use high saturation detection
+                document.getElementById('sat-min').value = satP90;
+                document.getElementById('sat-min-val').textContent = satP90;
+                document.getElementById('enable-sat').checked = true;
+                document.getElementById('enable-hsv').checked = false;
+
+                settingsText = `No strong color anomalies detected.<br>Using high saturation threshold: S>${satP90} (top 10%)`;
+                console.log("No anomalies found, using saturation fallback");
+            }
+
+            console.log("=== END ANALYSIS ===");
+
+            // Update preview
+            updateColorPreviews();
+
+            // Show settings
+            document.getElementById('smart-settings-text').innerHTML = settingsText;
+            document.getElementById('smart-settings-info').classList.remove('hidden');
+
+            updateStatus("Smart detection configured! Ready to process.", "text-green-400");
+        }
+
+        function updateColorPreviews() {
+            // Update previews for all HSV options
+            updateHSVPreview('hsv1');
+            updateHSVPreview('hsv2');
+            updateHSVPreview('hsv3');
+            updateHSVPreview('hsv-ex');
+            updateSaturationPreview();
+        }
+
+        // Debounce timer for preview updates
+        let previewUpdateTimers = {};
+
+        function updateHSVPreview(prefix) {
+            // Clear any pending update for this preview
+            if (previewUpdateTimers[prefix]) {
+                clearTimeout(previewUpdateTimers[prefix]);
+            }
+
+            // Debounce the update - wait 50ms before drawing
+            previewUpdateTimers[prefix] = setTimeout(() => {
+                drawHSVPreview(prefix);
+            }, 50);
+        }
+        function drawHSVPreview(prefix) {
+            const canvas = document.getElementById(`${prefix}-preview`);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Get the actual current values for THIS specific prefix
+            const hMinEl = document.getElementById(`${prefix}-h-min`);
+            const hMaxEl = document.getElementById(`${prefix}-h-max`);
+            const sMinEl = document.getElementById(`${prefix}-s-min`);
+            const sMaxEl = document.getElementById(`${prefix}-s-max`);
+            const vMinEl = document.getElementById(`${prefix}-v-min`);
+            const vMaxEl = document.getElementById(`${prefix}-v-max`);
+
+            if (!hMinEl || !hMaxEl || !sMinEl || !sMaxEl || !vMinEl || !vMaxEl) {
+                return;
+            }
+
+            const hMin = parseInt(hMinEl.value);
+            const hMax = parseInt(hMaxEl.value);
+            const sMin = parseInt(sMinEl.value);
+            const sMax = parseInt(sMaxEl.value);
+            const vMin = parseInt(vMinEl.value);
+            const vMax = parseInt(vMaxEl.value);
+
+            // Use mid-range saturation and value for preview
+            const previewSat = Math.floor((sMin + sMax) / 2);
+            const previewVal = Math.floor((vMin + vMax) / 2);
+
+            // Clear canvas first - THIS IS CRITICAL
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw hue gradient across the canvas
+            for (let x = 0; x < canvas.width; x++) {
+                // Map x position to hue value (0-179 for OpenCV)
+                const hue = Math.floor((x / canvas.width) * 180);
+
+                // Check if this hue is in range
+                let inRange = false;
+                if (hMin <= hMax) {
+                    inRange = (hue >= hMin && hue <= hMax);
+                } else {
+                    // Wraparound case (e.g., 170-10 includes 170-179 and 0-10)
+                    inRange = (hue >= hMin || hue <= hMax);
+                }
+
+                if (inRange) {
+                    // Convert OpenCV HSV to RGB using proper conversion
+                    const rgb = opencvHsvToRgb(hue, previewSat, previewVal);
+                    ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+                } else {
+                    ctx.fillStyle = `rgba(128, 128, 128, 0.2)`;
+                }
+                ctx.fillRect(x, 0, 1, canvas.height);
+            }
+        }        
+
+        // Proper OpenCV HSV to RGB conversion
+        function opencvHsvToRgb(h, s, v) {
+            // OpenCV uses H: 0-179, S: 0-255, V: 0-255
+            // Normalize to 0-1 range
+            const hNorm = h / 179.0;
+            const sNorm = s / 255.0;
+            const vNorm = v / 255.0;
+
+            const c = vNorm * sNorm;
+            const x = c * (1 - Math.abs(((hNorm * 6) % 2) - 1));
+            const m = vNorm - c;
+
+            let r, g, b;
+            const hSector = hNorm * 6;
+
+            if (hSector < 1) {
+                r = c; g = x; b = 0;
+            } else if (hSector < 2) {
+                r = x; g = c; b = 0;
+            } else if (hSector < 3) {
+                r = 0; g = c; b = x;
+            } else if (hSector < 4) {
+                r = 0; g = x; b = c;
+            } else if (hSector < 5) {
+                r = x; g = 0; b = c;
+            } else {
+                r = c; g = 0; b = x;
+            }
+
+            return [
+                Math.round((r + m) * 255),
+                Math.round((g + m) * 255),
+                Math.round((b + m) * 255)
+            ];
+        }
+        // function updateSaturationPreview() {
+        //     // Saturation Preview
+        //     const satCanvas = document.getElementById('sat-preview');
+        //     if (!satCanvas) return;
+
+        //     const satCtx = satCanvas.getContext('2d');
+        //     const satMinEl = document.getElementById('sat-min');
+        //     const satMaxEl = document.getElementById('sat-max');
+
+        //     if (!satMinEl || !satMaxEl) return;
+
+        //     const satMin = parseInt(satMinEl.value);
+        //     const satMax = parseInt(satMaxEl.value);
+
+        //     for (let x = 0; x < satCanvas.width; x++) {
+        //         const sat = Math.floor((x / satCanvas.width) * 255);
+        //         const alpha = sat / 255;
+
+        //         if (sat >= satMin && sat <= satMax) {
+        //             satCtx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+        //         } else {
+        //             satCtx.fillStyle = `rgba(128, 128, 128, 0.2)`;
+        //         }
+        //         satCtx.fillRect(x, 0, 1, satCanvas.height);
+        //     }
+        // }
+            let satPreviewTimer = null;
+
+            function updateSaturationPreview() {
+                // Clear any pending update
+                if (satPreviewTimer) {
+                    clearTimeout(satPreviewTimer);
+                }
+
+                // Debounce the update
+                satPreviewTimer = setTimeout(() => {
+                    drawSaturationPreview();
+                }, 50);
+            }
+
+            function drawSaturationPreview() {
+                const satCanvas = document.getElementById('sat-preview');
+                if (!satCanvas) return;
+
+                const satCtx = satCanvas.getContext('2d');
+                if (!satCtx) return;
+
+                const satMinEl = document.getElementById('sat-min');
+                const satMaxEl = document.getElementById('sat-max');
+
+                if (!satMinEl || !satMaxEl) return;
+
+                const satMin = parseInt(satMinEl.value);
+                const satMax = parseInt(satMaxEl.value);
+
+                // Clear canvas first - CRITICAL
+                satCtx.clearRect(0, 0, satCanvas.width, satCanvas.height);
+
+                // Draw saturation gradient
+                for (let x = 0; x < satCanvas.width; x++) {
+                    const sat = Math.floor((x / satCanvas.width) * 255);
+                    const alpha = sat / 255;
+
+                    if (sat >= satMin && sat <= satMax) {
+                        satCtx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+                    } else {
+                        satCtx.fillStyle = `rgba(128, 128, 128, 0.2)`;
+                    }
+                    satCtx.fillRect(x, 0, 1, satCanvas.height);
+                }
+            }
+
+
+        function analyzeCurrentFrame() {
+            if (!video || !video.videoWidth) {
+                alert('Please load a video first');
+                return;
+            }
+
+            updateStatus("Analyzing current frame...", "text-blue-400");
+            document.getElementById('analysis-status').textContent = "Analyzing...";
+
+            try {
+                cap.read(srcMat);
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                const colorData = analyzeFrame(hsvMat);
+                colorAnalysisData = colorData; // Store for "Use as Exclusion"
+                drawColorHistogram(colorData);
+                document.getElementById('use-as-exclusion-btn').classList.remove('hidden');
+                document.getElementById('analysis-status').textContent = "Analysis complete";
+                updateStatus("Current frame analyzed", "text-green-400");
+            } catch (err) {
+                console.error("Analysis error:", err);
+                document.getElementById('analysis-status').textContent = "Analysis failed";
+                updateStatus("Analysis failed", "text-red-400");
+            }
+        }
+
+        function analyzeWholeVideo() {
+            if (!video || !video.videoWidth) {
+                alert('Please load a video first');
+                return;
+            }
+
+            if (isProcessing) {
+                alert('Please pause video processing first');
+                return;
+            }
+
+            updateStatus("Analyzing whole video (sampling frames)...", "text-indigo-400");
+            document.getElementById('analysis-status').textContent = "Analyzing whole video...";
+
+            const savedTime = video.currentTime;
+            isSeekingSuppressed = true;
+
+            const duration = video.duration;
+            const sampleFrames = 30;
+            const frameStep = duration / sampleFrames;
+
+            let allColorData = { hues: [], sats: [] };
+            let frameIndex = 0;
+
+            function sampleNext() {
+                if (frameIndex >= sampleFrames) {
+                    isSeekingSuppressed = false;
+                    video.currentTime = savedTime;
+
+                    colorAnalysisData = allColorData; // Store for "Use as Exclusion"
+                    drawColorHistogram(allColorData);
+                    document.getElementById('use-as-exclusion-btn').classList.remove('hidden');
+                    document.getElementById('analysis-status').textContent = "Whole video analysis complete";
+                    updateStatus("Whole video analyzed", "text-green-400");
+                    return;
+                }
+
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+
+                    try {
+                        cap.read(srcMat);
+                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                        const frameData = analyzeFrame(hsvMat);
+                        allColorData.hues.push(...frameData.hues);
+                        allColorData.sats.push(...frameData.sats);
+
+                        frameIndex++;
+                        document.getElementById('analysis-status').textContent = `Analyzing... ${frameIndex}/${sampleFrames}`;
+
+                        setTimeout(sampleNext, 50);
+                    } catch (err) {
+                        console.error("Error:", err);
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                    }
+                };
+
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(frameIndex * frameStep, duration - 0.1);
+            }
+
+            sampleNext();
+        }
+
+        function analyzeFrame(hsvMat) {
+            const hues = {};
+            const saturations = {};
+            const values = {};
+            const sats = [];
+            const h = hsvMat.rows;
+            const w = hsvMat.cols;
+            const step = 20;
+
+            for (let y = 0; y < h; y += step) {
+                for (let x = 0; x < w; x += step) {
+                    const hue = hsvMat.ucharPtr(y, x)[0];
+                    const sat = hsvMat.ucharPtr(y, x)[1];
+                    const val = hsvMat.ucharPtr(y, x)[2];
+
+                    if (val > 30 && val < 230) {
+                        hues[hue] = (hues[hue] || 0) + 1;
+                        if (sat > 120) sats.push(sat);
+                    }
+
+                    // Collect saturation and value distribution
+                    saturations[sat] = (saturations[sat] || 0) + 1;
+                    values[val] = (values[val] || 0) + 1;
+                }
+            }
+
+            return {
+                hues: Object.entries(hues).map(([h, c]) => ({h: parseInt(h), count: c})),
+                saturations: Object.entries(saturations).map(([s, c]) => ({s: parseInt(s), count: c})),
+                values: Object.entries(values).map(([v, c]) => ({v: parseInt(v), count: c})),
+                sats
+            };
+        }
+
+        function drawColorHistogram(colorData) {
+            const canvas = document.getElementById('color-histogram');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Aggregate hue data
+            const hueCounts = new Array(180).fill(0);
+            if (colorData.hues && colorData.hues.length > 0) {
+                if (Array.isArray(colorData.hues[0])) {
+                    // Already aggregated
+                    colorData.hues.forEach(([h, c]) => hueCounts[h] = c);
+                } else {
+                    // Need to aggregate
+                    colorData.hues.forEach(item => {
+                        if (item.h !== undefined) hueCounts[item.h] += item.count;
+                    });
+                }
+            }
+
+            const maxCount = Math.max(...hueCounts);
+            if (maxCount === 0) return;
+
+            // Draw bars
+            const barWidth = width / 180;
+            for (let h = 0; h < 180; h++) {
+                const barHeight = (hueCounts[h] / maxCount) * (height - 40);
+
+                // Color for this hue
+                const rgb = hsvToRgb(h, 255, 255);
+                ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+                ctx.fillRect(h * barWidth, height - barHeight - 20, barWidth, barHeight);
+            }
+
+            // Stats
+            const statsEl = document.getElementById('analysis-stats');
+            const totalPixels = hueCounts.reduce((a, b) => a + b, 0);
+            const vividPixels = colorData.sats ? colorData.sats.length : 0;
+            const avgSat = colorData.sats && colorData.sats.length > 0
+                ? (colorData.sats.reduce((a, b) => a + b, 0) / colorData.sats.length).toFixed(0)
+                : 0;
+
+            // Find dominant hue
+            let dominantHue = 0;
+            let maxHueCount = 0;
+            hueCounts.forEach((count, hue) => {
+                if (count > maxHueCount) {
+                    maxHueCount = count;
+                    dominantHue = hue;
+                }
+            });
+
+            statsEl.innerHTML = `
+                <div class="bg-gray-700 p-2 rounded"><strong>Total Pixels:</strong> ${totalPixels.toLocaleString()}</div>
+                <div class="bg-gray-700 p-2 rounded"><strong>Vivid Pixels:</strong> ${vividPixels.toLocaleString()}</div>
+                <div class="bg-gray-700 p-2 rounded"><strong>Avg Saturation:</strong> ${avgSat}</div>
+                <div class="bg-gray-700 p-2 rounded"><strong>Dominant Hue:</strong> ${getColorName(dominantHue)} (${dominantHue})</div>
+            `;
+
+            document.getElementById('analysis-chart-container').classList.remove('hidden');
+
+            // Also draw saturation and value histograms
+            drawSaturationHistogram(colorData);
+            drawValueHistogram(colorData);
+        }
+
+        function drawSaturationHistogram(colorData) {
+            const canvas = document.getElementById('saturation-histogram');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Aggregate saturation data
+            const satCounts = new Array(256).fill(0);
+            if (colorData.saturations && colorData.saturations.length > 0) {
+                colorData.saturations.forEach(item => {
+                    if (item.s !== undefined) satCounts[item.s] = item.count;
+                });
+            }
+
+            const maxCount = Math.max(...satCounts);
+            if (maxCount === 0) return;
+
+            // Draw bars
+            const barWidth = width / 256;
+            for (let s = 0; s < 256; s++) {
+                const barHeight = (satCounts[s] / maxCount) * (height - 40);
+
+                // Color gradient from gray (0 sat) to magenta (255 sat)
+                const alpha = s / 255;
+                ctx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+                ctx.fillRect(s * barWidth, height - barHeight - 20, barWidth, barHeight);
+            }
+
+            // Add labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px monospace';
+            ctx.fillText('0', 5, height - 5);
+            ctx.fillText('128', width / 2 - 15, height - 5);
+            ctx.fillText('255', width - 30, height - 5);
+        }
+
+        function drawValueHistogram(colorData) {
+            const canvas = document.getElementById('value-histogram');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Aggregate value data
+            const valCounts = new Array(256).fill(0);
+            if (colorData.values && colorData.values.length > 0) {
+                colorData.values.forEach(item => {
+                    if (item.v !== undefined) valCounts[item.v] = item.count;
+                });
+            }
+
+            const maxCount = Math.max(...valCounts);
+            if (maxCount === 0) return;
+
+            // Draw bars
+            const barWidth = width / 256;
+            for (let v = 0; v < 256; v++) {
+                const barHeight = (valCounts[v] / maxCount) * (height - 40);
+
+                // Color gradient from black (0 val) to white (255 val)
+                const brightness = v;
+                ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                ctx.fillRect(v * barWidth, height - barHeight - 20, barWidth, barHeight);
+            }
+
+            // Add labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px monospace';
+            ctx.fillText('0', 5, height - 5);
+            ctx.fillText('128', width / 2 - 15, height - 5);
+            ctx.fillText('255', width - 30, height - 5);
+        }
+
+        function updateSettingsIndicator() {
+            const hsvEnabled = document.getElementById('enable-hsv').checked;
+            const satEnabled = document.getElementById('enable-sat').checked;
+            const smartFilter = document.getElementById('enable-smart-filter').checked;
+
+            // Get active HSV options
+            const hsv1Enabled = document.getElementById('hsv1-enabled')?.checked;
+            const hsv2Enabled = document.getElementById('hsv2-enabled')?.checked;
+            const hsv3Enabled = document.getElementById('hsv3-enabled')?.checked;
+
+            let activeOptions = [];
+            if (hsv1Enabled) activeOptions.push('HSV1');
+            if (hsv2Enabled) activeOptions.push('HSV2');
+            if (hsv3Enabled) activeOptions.push('HSV3');
+
+            document.getElementById('ind-hsv-enabled').textContent = hsvEnabled ? 'Yes' : 'No';
+            document.getElementById('ind-hsv-enabled').className = hsvEnabled ? 'text-green-400' : 'text-gray-500';
+
+            document.getElementById('ind-sat-enabled').textContent = satEnabled ? 'Yes' : 'No';
+            document.getElementById('ind-sat-enabled').className = satEnabled ? 'text-purple-400' : 'text-gray-500';
+
+            // Show active HSV options instead of specific ranges
+            const hueRangeEl = document.getElementById('ind-hue-range');
+            if (hueRangeEl) {
+                hueRangeEl.textContent = activeOptions.length > 0 ? activeOptions.join(', ') : 'None';
+            }
+
+            const satRangeEl = document.getElementById('ind-sat-range');
+            if (satRangeEl) {
+                const satMin = document.getElementById('sat-min')?.value || '200';
+                const satMax = document.getElementById('sat-max')?.value || '255';
+                satRangeEl.textContent = `${satMin}-${satMax}`;
+            }
+
+            document.getElementById('ind-smart-filter').textContent = smartFilter ? 'On' : 'Off';
+            document.getElementById('ind-smart-filter').className = smartFilter ? 'text-orange-400' : 'text-gray-500';
+
+            // Show size range for HSV1 as a reference
+            const sizeRangeEl = document.getElementById('ind-size-range');
+            if (sizeRangeEl) {
+                const sizeMin = document.getElementById('hsv1-min-size')?.value || '200';
+                const sizeMax = document.getElementById('hsv1-max-size')?.value || '20000';
+                sizeRangeEl.textContent = `${sizeMin}-${sizeMax}px`;
+            }
+        }
+
+        function useAnalysisAsExclusion() {
+            if (!colorAnalysisData) {
+                alert('Please run color analysis first');
+                return;
+            }
+
+            // Use the current frame's color analysis as terrain baseline
+            try {
+                cap.read(srcMat);
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                const h = hsvMat.rows;
+                const w = hsvMat.cols;
+                const step = 20;
+
+                let hueValues = [];
+                let satValues = [];
+
+                for (let y = 0; y < h; y += step) {
+                    for (let x = 0; x < w; x += step) {
+                        const hue = hsvMat.ucharPtr(y, x)[0];
+                        const sat = hsvMat.ucharPtr(y, x)[1];
+                        const val = hsvMat.ucharPtr(y, x)[2];
+
+                        if (val > 30 && val < 230) {
+                            hueValues.push(hue);
+                            satValues.push(sat);
+                        }
+                    }
+                }
+
+                // Calculate statistics
+                const hueMean = hueValues.reduce((a, b) => a + b, 0) / hueValues.length;
+                const hueStd = Math.sqrt(hueValues.reduce((sq, n) => sq + Math.pow(n - hueMean, 2), 0) / hueValues.length);
+
+                const satMean = satValues.reduce((a, b) => a + b, 0) / satValues.length;
+                const satStd = Math.sqrt(satValues.reduce((sq, n) => sq + Math.pow(n - satMean, 2), 0) / satValues.length);
+
+                // Sort to get percentiles
+                hueValues.sort((a, b) => a - b);
+                satValues.sort((a, b) => a - b);
+
+                const hueP25 = hueValues[Math.floor(hueValues.length * 0.25)];
+                const hueP75 = hueValues[Math.floor(hueValues.length * 0.75)];
+                const satP25 = satValues[Math.floor(satValues.length * 0.25)];
+                const satP75 = satValues[Math.floor(satValues.length * 0.75)];
+
+                terrainBaseline = {
+                    hueMean: hueMean,
+                    hueStd: hueStd,
+                    hueP25: hueP25,
+                    hueP75: hueP75,
+                    satMean: satMean,
+                    satStd: satStd,
+                    satP25: satP25,
+                    satP75: satP75
+                };
+
+                const filterStrength = document.getElementById('filter-strength').value;
+                const infoEl = document.getElementById('terrain-info');
+                infoEl.innerHTML = `
+                    <strong class="text-orange-400">✓ ACTIVE: Exclusion from Current Frame</strong><br>
+                    <div class="pl-2 mt-1">
+                    <strong>Baseline Statistics:</strong><br>
+                    • Hue: ${hueMean.toFixed(0)} ± ${hueStd.toFixed(0)}σ (P25-P75: ${hueP25.toFixed(0)}-${hueP75.toFixed(0)})<br>
+                    • Sat: ${satMean.toFixed(0)} ± ${satStd.toFixed(0)}σ (P25-P75: ${satP25.toFixed(0)}-${satP75.toFixed(0)})<br>
+                    • Filter Strength: ${filterStrength}σ (lower = stricter)<br>
+                    <em class="text-yellow-300">Detections matching these ranges will be filtered</em><br>
+                    <span class="text-gray-400">To disable: uncheck "Smart Terrain Filter"</span>
+                    </div>
+                `;
+                infoEl.classList.remove('hidden');
+
+                // Enable smart filter
+                document.getElementById('enable-smart-filter').checked = true;
+                useSmartFilter = true;
+                updateSettingsIndicator();
+
+                updateStatus("Current frame set as exclusion baseline. Smart filter enabled. Reprocessing...", "text-green-400");
+
+                // Clear current detections from the display
+                batchDetections = [];
+                document.getElementById('detection-list').innerHTML = '';
+                document.getElementById('detection-list-container').classList.add('hidden');
+
+                // Reprocess current frame with new exclusion
+                if (!isProcessing) {
+                    processSingleFrame();
+                }
+
+            } catch (err) {
+                console.error("Error setting exclusion:", err);
+                updateStatus("Failed to set exclusion baseline", "text-red-400");
+            }
+        }
+
+        function hsvToRgb(h, s, v) {
+            s /= 255; v /= 255;
+            const c = v * s;
+            const x = c * (1 - Math.abs(((h * 2) % 120) / 60 - 1));
+            const m = v - c;
+            let r, g, b;
+
+            if (h < 30) { r = c; g = x; b = 0; }
+            else if (h < 60) { r = x; g = c; b = 0; }
+            else if (h < 90) { r = 0; g = c; b = x; }
+            else if (h < 120) { r = 0; g = x; b = c; }
+            else if (h < 150) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+
+            return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+        }
+
+        function batchProcessVideo() {
+            if (!video || !video.videoWidth) {
+                alert('Please load a video first');
+                return;
+            }
+
+            if (isProcessing) {
+                alert('Please pause video processing first');
+                return;
+            }
+
+            const detectionMode = document.getElementById('detection-mode').value;
+
+            // If smart mode and not configured yet, run quick analyze first
+            if (detectionMode === 'smart' && document.getElementById('smart-settings-info').classList.contains('hidden')) {
+                updateStatus("Running smart analysis before batch processing...", "text-indigo-400");
+                quickAnalyzeAndConfigure();
+
+                // Wait for analysis to complete, then start batch
+                const checkInterval = setInterval(() => {
+                    if (!document.getElementById('smart-settings-info').classList.contains('hidden')) {
+                        clearInterval(checkInterval);
+                        setTimeout(() => startBatchProcessing(), 1000);
+                    }
+                }, 500);
+                return;
+            }
+
+            startBatchProcessing();
+        }
+
+        function startBatchProcessing() {
+            const sampleRate = parseInt(document.getElementById('frame-sample-rate').value);
+            const duration = video.duration;
+            const totalFrames = Math.floor(duration * fps);
+            const framesToProcess = Math.floor(totalFrames / sampleRate);
+
+            const enableHsv = document.getElementById('enable-hsv').checked;
+            const enableSat = document.getElementById('enable-sat').checked;
+
+            if (!enableHsv && !enableSat) {
+                alert('Please enable at least one detection method (HSV Color Range or High Saturation)');
+                return;
+            }
+
+            batchDetections = [];
+            const savedTime = video.currentTime;
+            isSeekingSuppressed = true;
+
+            // Show and reset progress bar
+            const progressEl = document.getElementById('batch-progress');
+            progressEl.classList.remove('hidden');
+            document.getElementById('batch-progress-bar').style.width = '0%';
+            document.getElementById('batch-progress-text').textContent = 'Starting...';
+            console.log('Batch progress bar shown:', !progressEl.classList.contains('hidden'));
+
+            document.getElementById('batch-process-btn').disabled = true;
+            updateStatus("Batch processing in progress...", "text-purple-400");
+
+            let frameIndex = 0;
+
+            function processNext() {
+                if (frameIndex >= framesToProcess) {
+                    // Complete
+                    console.log(`Batch processing complete. Total detections: ${batchDetections.length}`);
+                    isSeekingSuppressed = false;
+                    video.currentTime = savedTime;
+                    document.getElementById('batch-process-btn').disabled = false;
+                    document.getElementById('batch-progress').classList.add('hidden');
+
+                    displayDetectionList();
+                    updateStatus(`Batch processing complete. Found ${batchDetections.length} frames with detections.`, "text-green-400");
+                    return;
+                }
+
+                const frameNum = frameIndex * sampleRate;
+                const timePos = frameNum / fps;
+
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+
+                    try {
+                        const dets = detectionsForCurrentFrame(frameNum);
+                        console.log(`Frame ${frameNum}: Found ${dets.length} detections`);
+
+                        // Capture thumbnail with detections drawn
+                        let thumbnail = null;
+                        if (dets.length > 0) {
+                            // Create a display copy - clone srcMat like processSingleFrame does
+                            let displayMat = srcMat.clone();
+
+                            dets.forEach(det => {
+                                let p1 = new cv.Point(det.rect.x, det.rect.y);
+                                let p2 = new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height);
+
+                                if (det.type === 'HSV') {
+                                    // Green color - same format as processSingleFrame
+                                    cv.rectangle(displayMat, p1, p2, [0, 255, 0, 255], 2, cv.LINE_AA, 0);
+                                } else if (det.type === 'Sat') {
+                                    // Magenta color - same format as processSingleFrame
+                                    cv.rectangle(displayMat, p1, p2, [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+                                }
+                            });
+
+                            // Convert to thumbnail
+                            const tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = displayMat.cols;
+                            tempCanvas.height = displayMat.rows;
+                            cv.imshow(tempCanvas, displayMat);
+                            thumbnail = tempCanvas.toDataURL('image/jpeg', 0.7);
+                            displayMat.delete();
+
+                            batchDetections.push({
+                                frame: frameNum,
+                                time: timePos,
+                                detections: dets,
+                                thumbnail: thumbnail
+                            });
+                        }
+
+                        frameIndex++;
+                        const progress = (frameIndex / framesToProcess) * 100;
+                        document.getElementById('batch-progress-bar').style.width = progress + '%';
+                        document.getElementById('batch-progress-text').textContent =
+                            `Processing frame ${frameNum} / ${totalFrames} (${Math.round(progress)}%)`;
+
+                        setTimeout(processNext, 10);
+                    } catch (err) {
+                        console.error("Batch error:", err);
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                        document.getElementById('batch-process-btn').disabled = false;
+                    }
+                };
+
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(timePos, duration - 0.1);
+            }
+
+            processNext();
+        }
+
+        function detectionsForCurrentFrame(frameNum) {
+            const detections = [];
+
+            try {
+                cap.read(srcMat);
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                const enableHsv = document.getElementById('enable-hsv').checked;
+                const enableSat = document.getElementById('enable-sat').checked;
+
+                // Multi-HSV Detection
+                if (enableHsv) {
+                    const hsvOptions = [
+                        { prefix: 'hsv1', enabled: document.getElementById('hsv1-enabled')?.checked },
+                        { prefix: 'hsv2', enabled: document.getElementById('hsv2-enabled')?.checked },
+                        { prefix: 'hsv3', enabled: document.getElementById('hsv3-enabled')?.checked }
+                    ];
+
+                    // Get exclusion range if enabled
+                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
+                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
+                    if (exclusionEnabled) {
+                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
+                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
+                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
+                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
+                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
+                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
+                    }
+
+                    for (const option of hsvOptions) {
+                        if (!option.enabled) continue;
+
+                        const hMin = parseInt(document.getElementById(`${option.prefix}-h-min`)?.value || 0);
+                        const hMax = parseInt(document.getElementById(`${option.prefix}-h-max`)?.value || 179);
+                        const sMin = parseInt(document.getElementById(`${option.prefix}-s-min`)?.value || 0);
+                        const sMax = parseInt(document.getElementById(`${option.prefix}-s-max`)?.value || 255);
+                        const vMin = parseInt(document.getElementById(`${option.prefix}-v-min`)?.value || 0);
+                        const vMax = parseInt(document.getElementById(`${option.prefix}-v-max`)?.value || 255);
+                        const minSize = parseInt(document.getElementById(`${option.prefix}-min-size`)?.value || 200);
+                        const maxSize = parseInt(document.getElementById(`${option.prefix}-max-size`)?.value || 20000);
+
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
+                        let optionMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, optionMask);
+                        lowMat.delete();
+                        highMat.delete();
+
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
+                            contours.delete();
+                        }
+                        contours = new cv.MatVector();
+                        cv.findContours(optionMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= minSize && area <= maxSize) {
+                                let rect = cv.boundingRect(contour);
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                const detVal = hsvMat.ucharPtr(cy, cx)[2];
+
+                                let skipDetection = false;
+
+                                // Check if color is in exclusion range
+                                if (exclusionEnabled) {
+                                    let inExclusion = false;
+                                    if (exHMin <= exHMax) {
+                                        inExclusion = (detHue >= exHMin && detHue <= exHMax);
+                                    } else {
+                                        inExclusion = (detHue >= exHMin || detHue <= exHMax);
+                                    }
+                                    inExclusion = inExclusion &&
+                                                 (detSat >= exSMin && detSat <= exSMax) &&
+                                                 (detVal >= exVMin && detVal <= exVMax);
+                                    if (inExclusion) skipDetection = true;
+                                }
+
+                                // Check if color is excluded (old system)
+                                if (isExcludedColor(detHue)) skipDetection = true;
+
+                                // Check if color matches terrain baseline
+                                if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+
+                                if (skipDetection) continue;
+
+                                const colorName = getColorName(detHue);
+                                detections.push({
+                                    type: option.prefix.toUpperCase(),
+                                    desc: `${colorName} H${detHue} S${detSat}`,
+                                    area: Math.round(area),
+                                    rect: rect
+                                });
+                            }
+                        }
+
+                        optionMask.delete();
+                    }
+                }
+
+                // High Saturation Detection
+                if (enableSat) {
+                    const satMin = parseInt(document.getElementById('sat-min').value);
+                    const minSize = parseInt(document.getElementById('sat-min-size').value);
+                    const maxSize = parseInt(document.getElementById('sat-max-size').value);
+
+                    let satChannel = new cv.MatVector();
+                    cv.split(hsvMat, satChannel);
+                    let sat = satChannel.get(1);
+                    let satMask = new cv.Mat();
+                    let satLow = new cv.Mat(sat.rows, sat.cols, sat.type(), new cv.Scalar(satMin));
+                    let satHigh = new cv.Mat(sat.rows, sat.cols, sat.type(), new cv.Scalar(255));
+                    cv.inRange(sat, satLow, satHigh, satMask);
+                    satLow.delete();
+                    satHigh.delete();
+                    sat.delete();
+                    satChannel.delete();
+
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
+                        contours.delete();
+                    }
+                    contours = new cv.MatVector();
+                    cv.findContours(satMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                    for (let i = 0; i < contours.size(); ++i) {
+                        const contour = contours.get(i);
+                        const area = cv.contourArea(contour, false);
+
+                        if (area >= minSize && area <= maxSize) {
+                            let rect = cv.boundingRect(contour);
+                            const cx = rect.x + Math.floor(rect.width / 2);
+                            const cy = rect.y + Math.floor(rect.height / 2);
+
+                            const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                            const detSat = hsvMat.ucharPtr(cy, cx)[1];
+
+                            // Check if color is excluded
+                            if (isExcludedColor(detHue)) continue;
+
+                            // Check if color matches terrain baseline
+                            if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
+
+                            detections.push({
+                                type: 'Sat',
+                                desc: `S${detSat}`,
+                                area: Math.round(area),
+                                rect: rect
+                            });
+                        }
+                    }
+
+                    satMask.delete();
+                }
+            } catch (err) {
+                console.error("Detection error:", err);
+            }
+
+            return detections;
+        }
+
+        let currentModalIndex = 0;
+
+        function openDetectionModal(index) {
+            currentModalIndex = index;
+            const detection = batchDetections[index];
+
+            // Seek video to this frame's time
+            if (!isProcessing && video) {
+                const onSeekForModal = () => {
+                    video.removeEventListener('seeked', onSeekForModal);
+                    try {
+                        processSingleFrame();
+                    } catch (err) {
+                        console.error("Error processing frame for modal:", err);
+                    }
+                };
+                video.addEventListener('seeked', onSeekForModal, { once: true });
+                video.currentTime = detection.time;
+            }
+
+            showDetectionInModal(index);
+
+            const modal = document.getElementById('canvas-modal');
+            const prevBtn = document.getElementById('modal-prev');
+            const nextBtn = document.getElementById('modal-next');
+            const modalInfo = document.getElementById('modal-info');
+
+            modal.classList.remove('hidden');
+            prevBtn.classList.remove('hidden');
+            nextBtn.classList.remove('hidden');
+            modalInfo.classList.remove('hidden');
+
+            // Update button visibility
+            prevBtn.style.visibility = index > 0 ? 'visible' : 'hidden';
+            nextBtn.style.visibility = index < batchDetections.length - 1 ? 'visible' : 'hidden';
+        }
+
+        function showDetectionInModal(index) {
+            if (index < 0 || index >= batchDetections.length) return;
+
+            const detection = batchDetections[index];
+            const modalCanvas = document.getElementById('modal-canvas');
+            const modalInfo = document.getElementById('modal-info');
+
+            // Load thumbnail into modal
+            const img = new Image();
+            img.onload = () => {
+                modalCanvas.width = img.width;
+                modalCanvas.height = img.height;
+                const ctx = modalCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = detection.thumbnail;
+
+            // Update info
+            modalInfo.textContent = `Frame ${detection.frame} (${detection.time.toFixed(2)}s) - ${detection.detections.length} detections - ${index + 1}/${batchDetections.length}`;
+        }
+
+        function navigateModal(direction) {
+            const newIndex = currentModalIndex + direction;
+            if (newIndex >= 0 && newIndex < batchDetections.length) {
+                currentModalIndex = newIndex;
+                const detection = batchDetections[newIndex];
+
+                // Seek video to this frame's time
+                if (!isProcessing && video) {
+                    const onSeekNav = () => {
+                        video.removeEventListener('seeked', onSeekNav);
+                        try {
+                            processSingleFrame();
+                        } catch (err) {
+                            console.error("Error processing frame during navigation:", err);
+                        }
+                    };
+                    video.addEventListener('seeked', onSeekNav, { once: true });
+                    video.currentTime = detection.time;
+                }
+
+                showDetectionInModal(newIndex);
+
+                // Update button visibility
+                const prevBtn = document.getElementById('modal-prev');
+                const nextBtn = document.getElementById('modal-next');
+                prevBtn.style.visibility = newIndex > 0 ? 'visible' : 'hidden';
+                nextBtn.style.visibility = newIndex < batchDetections.length - 1 ? 'visible' : 'hidden';
+            }
+        }
+
+        function displayDetectionList() {
+            const listContainer = document.getElementById('detection-list');
+            listContainer.innerHTML = '';
+
+            if (batchDetections.length === 0) {
+                listContainer.innerHTML = '<div class="col-span-full text-center text-gray-400 p-4">No detections found</div>';
+                document.getElementById('detection-list-container').classList.remove('hidden');
+                return;
+            }
+
+            batchDetections.forEach((frameData, idx) => {
+                const frameCard = document.createElement('div');
+                frameCard.className = 'bg-gray-800 rounded overflow-hidden hover:ring-2 hover:ring-sky-400 transition-all cursor-pointer';
+
+                // Create thumbnail image
+                const thumbnailImg = document.createElement('img');
+                thumbnailImg.src = frameData.thumbnail;
+                thumbnailImg.className = 'w-full h-auto';
+                thumbnailImg.alt = `Frame ${frameData.frame}`;
+
+                // Create detection info section
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'p-2';
+
+                const frameInfo = document.createElement('div');
+                frameInfo.className = 'text-xs text-sky-400 font-semibold mb-1';
+                frameInfo.textContent = `Frame ${frameData.frame} (${frameData.time.toFixed(2)}s)`;
+
+                const detectionsDiv = document.createElement('div');
+                detectionsDiv.className = 'space-y-1';
+
+                frameData.detections.forEach(det => {
+                    const detLine = document.createElement('div');
+                    detLine.className = 'text-xs';
+                    const colorClass = det.type === 'HSV' ? 'text-green-400' : 'text-purple-400';
+                    detLine.innerHTML = `<span class="${colorClass}">${det.type}:</span> ${det.desc} <span class="text-gray-500">(${det.area}px)</span>`;
+                    detectionsDiv.appendChild(detLine);
+                });
+
+                infoDiv.appendChild(frameInfo);
+                infoDiv.appendChild(detectionsDiv);
+
+                frameCard.appendChild(thumbnailImg);
+                frameCard.appendChild(infoDiv);
+
+                // Click handler to open in modal
+                frameCard.addEventListener('click', () => {
+                    openDetectionModal(idx);
+                });
+
+                listContainer.appendChild(frameCard);
+            });
+
+            document.getElementById('detection-list-container').classList.remove('hidden');
+        }
+
+        function startProcessing() {
+            isProcessing = true;
+            video.play();
+            updateStatus("Processing...", "text-sky-400");
+            document.getElementById('start-btn').innerHTML = "⏸ Pause";
+            document.getElementById('start-btn').classList.replace('bg-green-600', 'bg-yellow-600');
+            document.getElementById('start-btn').classList.replace('hover:bg-green-700', 'hover:bg-yellow-700');
+            
+            then = Date.now();
+            requestAnimationFrame(processVideoFrame);
+        }
+
+        function pauseProcessing() {
+            isProcessing = false;
+            video.pause();
+            updateStatus("Paused. Press Start to resume.", "text-yellow-400");
+            document.getElementById('start-btn').innerHTML = "▶ Start";
+            document.getElementById('start-btn').classList.replace('bg-yellow-600', 'bg-green-600');
+            document.getElementById('start-btn').classList.replace('hover:bg-yellow-700', 'hover:bg-green-700');
+        }
+
+        function processVideoFrame() {
+            if (!isProcessing) {
+                return;
+            }
+
+            now = Date.now();
+            elapsed = now - then;
+            let frameInterval = 1000 / fps;
+
+            if (elapsed > frameInterval) {
+                then = now - (elapsed % frameInterval);
+                processSingleFrame();
+            }
+
+            requestAnimationFrame(processVideoFrame);
+        }
+        
+        function analyzeTerrain() {
+            if (isProcessing) {
+                alert('Please pause video processing first');
+                return;
+            }
+            
+            const savedTime = video.currentTime; // Save current position
+            isSeekingSuppressed = true; // Prevent slider updates
+            
+            updateStatus("Analyzing terrain colors (sampling 20 frames)...", "text-orange-400");
+            
+            const duration = video.duration;
+            const sampleFrames = 20;
+            const frameStep = duration / sampleFrames;
+            
+            let hueValues = [];
+            let satValues = [];
+            
+            let frameIndex = 0;
+            
+            function sampleNextFrame() {
+                if (frameIndex >= sampleFrames) {
+                    // Analysis complete - restore position
+                    const restoreHandler = () => {
+                        video.removeEventListener('seeked', restoreHandler);
+                        isSeekingSuppressed = false;
+                        
+                        // Calculate statistics
+                        const hueMean = hueValues.reduce((a, b) => a + b, 0) / hueValues.length;
+                        const hueStd = Math.sqrt(hueValues.reduce((sq, n) => sq + Math.pow(n - hueMean, 2), 0) / hueValues.length);
+                        
+                        const satMean = satValues.reduce((a, b) => a + b, 0) / satValues.length;
+                        const satStd = Math.sqrt(satValues.reduce((sq, n) => sq + Math.pow(n - satMean, 2), 0) / satValues.length);
+                        
+                        // Sort to get percentiles
+                        hueValues.sort((a, b) => a - b);
+                        satValues.sort((a, b) => a - b);
+                        
+                        const hueP25 = hueValues[Math.floor(hueValues.length * 0.25)];
+                        const hueP75 = hueValues[Math.floor(hueValues.length * 0.75)];
+                        const satP25 = satValues[Math.floor(satValues.length * 0.25)];
+                        const satP75 = satValues[Math.floor(satValues.length * 0.75)];
+                        
+                        terrainBaseline = {
+                            hueMean: hueMean,
+                            hueStd: hueStd,
+                            hueP25: hueP25,
+                            hueP75: hueP75,
+                            satMean: satMean,
+                            satStd: satStd,
+                            satP25: satP25,
+                            satP75: satP75
+                        };
+                        
+                        const filterStrength = document.getElementById('filter-strength').value;
+                        const smartFilterEnabled = document.getElementById('enable-smart-filter').checked;
+                        const infoEl = document.getElementById('terrain-info');
+                        infoEl.innerHTML = `
+                            <strong class="${smartFilterEnabled ? 'text-orange-400' : 'text-gray-400'}">${smartFilterEnabled ? '✓ ACTIVE' : '○ INACTIVE'}: Terrain from Whole Video (20 frames)</strong><br>
+                            <div class="pl-2 mt-1">
+                            <strong>Baseline Statistics:</strong><br>
+                            • Hue: ${hueMean.toFixed(0)} ± ${hueStd.toFixed(0)}σ (P25-P75: ${hueP25.toFixed(0)}-${hueP75.toFixed(0)})<br>
+                            • Sat: ${satMean.toFixed(0)} ± ${satStd.toFixed(0)}σ (P25-P75: ${satP25.toFixed(0)}-${satP75.toFixed(0)})<br>
+                            • Filter Strength: ${filterStrength}σ (lower = stricter)<br>
+                            <em class="text-yellow-300">Detections matching these ranges will be filtered</em><br>
+                            <span class="text-gray-400">To ${smartFilterEnabled ? 'disable' : 'enable'}: ${smartFilterEnabled ? 'uncheck' : 'check'} "Smart Terrain Filter" checkbox above</span>
+                            </div>
+                        `;
+                        infoEl.classList.remove('hidden');
+
+                        updateStatus("Terrain analysis complete! " + (smartFilterEnabled ? "Filter active." : "Enable Smart Filter checkbox to use."), "text-green-400");
+                        
+                        // Redraw current frame
+                        if (!isProcessing) processSingleFrame();
+                    };
+                    
+                    video.addEventListener('seeked', restoreHandler, { once: true });
+                    video.currentTime = savedTime;
+                    return;
+                }
+                
+                const seekTime = frameIndex * frameStep;
+                
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+                    
+                    try {
+                        cap.read(srcMat);
+                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+                        
+                        // Sample pixels in a grid pattern
+                        const h = hsvMat.rows;
+                        const w = hsvMat.cols;
+                        const step = 30;
+                        
+                        for (let y = 0; y < h; y += step) {
+                            for (let x = 0; x < w; x += step) {
+                                const hue = hsvMat.ucharPtr(y, x)[0];
+                                const sat = hsvMat.ucharPtr(y, x)[1];
+                                const val = hsvMat.ucharPtr(y, x)[2];
+                                
+                                if (val > 30 && val < 230) {
+                                    hueValues.push(hue);
+                                    satValues.push(sat);
+                                }
+                            }
+                        }
+                        
+                        frameIndex++;
+                        updateStatus(`Analyzing terrain... ${frameIndex}/${sampleFrames}`, "text-orange-400");
+                        
+                        setTimeout(sampleNextFrame, 50);
+                        
+                    } catch (err) {
+                        console.error("Error during terrain analysis:", err);
+                        updateStatus("Error during terrain analysis", "text-red-400");
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                    }
+                };
+                
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(seekTime, duration - 0.1);
+            }
+            
+            sampleNextFrame();
+        }
+        
+        function isExcludedColor(hue) {
+            for (let range of excludedColorRanges) {
+                if (hue >= range.min && hue <= range.max) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function isTerrainColor(hue, sat) {
+            if (!terrainBaseline || !useSmartFilter) return false;
+            
+            // Get filter strength (lower = more aggressive)
+            const filterStrength = parseFloat(document.getElementById('filter-strength').value);
+            
+            // Check if this hue/sat falls within typical terrain ranges
+            const hueInRange = Math.abs(hue - terrainBaseline.hueMean) < (terrainBaseline.hueStd * filterStrength);
+            const satInRange = Math.abs(sat - terrainBaseline.satMean) < (terrainBaseline.satStd * filterStrength);
+            
+            // Percentile-based check (more conservative)
+            const huePercentileMargin = (terrainBaseline.hueP75 - terrainBaseline.hueP25) * (filterStrength / 2.0);
+            const satPercentileMargin = (terrainBaseline.satP75 - terrainBaseline.satP25) * (filterStrength / 2.0);
+            
+            const hueInP25P75 = hue >= (terrainBaseline.hueP25 - huePercentileMargin) && 
+                               hue <= (terrainBaseline.hueP75 + huePercentileMargin);
+            const satInP25P75 = sat >= (terrainBaseline.satP25 - satPercentileMargin) && 
+                               sat <= (terrainBaseline.satP75 + satPercentileMargin);
+            
+            // Filter out if BOTH hue and sat match terrain
+            // At strength 1.5: moderate filtering
+            // At strength 0.5: very aggressive (only extreme outliers pass)
+            // At strength 3.0: very lenient (more detections pass)
+            return (hueInRange && satInRange) || (hueInP25P75 && satInP25P75);
+        }
+
+        function processSingleFrame() {
+            try {
+                // Check if video is valid
+                if (!cap || !video || !video.videoWidth || !video.videoHeight) {
+                    console.warn("Invalid video state, skipping frame");
+                    return;
+                }
+                
+                // Check if mats are initialized
+                if (!srcMat || !rgbMat || !hsvMat) {
+                    console.warn("Mats not initialized, skipping frame");
+                    return;
+                }
+                
+                cap.read(srcMat);
+                
+                // Check if we successfully read a frame
+                if (srcMat.empty()) {
+                    console.warn("Empty frame, skipping");
+                    return;
+                }
+
+                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                const enableHsv = document.getElementById('enable-hsv').checked;
+                const enableSat = document.getElementById('enable-sat').checked;
+
+                let hsvCount = 0;
+                let satCount = 0;
+
+                let outputFrame = srcMat.clone();
+
+                // Multi-HSV Detection with individual options
+                if (enableHsv) {
+                    // Check which HSV options are enabled
+                    const hsvOptions = [
+                        { prefix: 'hsv1', color: [0, 255, 0, 255], enabled: document.getElementById('hsv1-enabled')?.checked },
+                        { prefix: 'hsv2', color: [255, 0, 255, 255], enabled: document.getElementById('hsv2-enabled')?.checked },
+                        { prefix: 'hsv3', color: [0, 255, 255, 255], enabled: document.getElementById('hsv3-enabled')?.checked }
+                    ];
+
+                    // Get exclusion range if enabled
+                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
+                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
+                    if (exclusionEnabled) {
+                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
+                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
+                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
+                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
+                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
+                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
+                    }
+
+                    // Process each enabled HSV option
+                    for (const option of hsvOptions) {
+                        if (!option.enabled) continue;
+
+                        const hMin = parseInt(document.getElementById(`${option.prefix}-h-min`)?.value || 0);
+                        const hMax = parseInt(document.getElementById(`${option.prefix}-h-max`)?.value || 179);
+                        const sMin = parseInt(document.getElementById(`${option.prefix}-s-min`)?.value || 0);
+                        const sMax = parseInt(document.getElementById(`${option.prefix}-s-max`)?.value || 255);
+                        const vMin = parseInt(document.getElementById(`${option.prefix}-v-min`)?.value || 0);
+                        const vMax = parseInt(document.getElementById(`${option.prefix}-v-max`)?.value || 255);
+                        const minSize = parseInt(document.getElementById(`${option.prefix}-min-size`)?.value || 200);
+                        const maxSize = parseInt(document.getElementById(`${option.prefix}-max-size`)?.value || 20000);
+
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
+
+                        let optionMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, optionMask);
+
+                        lowMat.delete();
+                        highMat.delete();
+
+                        // Properly clean up old contours before creating new ones
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) {
+                                contours.get(i).delete();
+                            }
+                            contours.delete();
+                        }
+                        contours = new cv.MatVector();
+
+                        cv.findContours(optionMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= minSize && area <= maxSize) {
+                                let rect = cv.boundingRect(contour);
+
+                                // Sample the center of the detection
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                let skipDetection = false;
+
+                                if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                                    const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                    const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                    const detVal = hsvMat.ucharPtr(cy, cx)[2];
+
+                                    // Check if color is in exclusion range
+                                    if (exclusionEnabled) {
+                                        let inExclusion = false;
+                                        if (exHMin <= exHMax) {
+                                            inExclusion = (detHue >= exHMin && detHue <= exHMax);
+                                        } else {
+                                            inExclusion = (detHue >= exHMin || detHue <= exHMax);
+                                        }
+                                        inExclusion = inExclusion &&
+                                                     (detSat >= exSMin && detSat <= exSMax) &&
+                                                     (detVal >= exVMin && detVal <= exVMax);
+                                        if (inExclusion) skipDetection = true;
+                                    }
+
+                                    // Check if color is excluded (old system)
+                                    if (isExcludedColor(detHue)) skipDetection = true;
+
+                                    // Smart filter: skip if it looks like terrain
+                                    if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                }
+
+                                if (skipDetection) continue;
+
+                                hsvCount++;
+
+                                let p1 = new cv.Point(rect.x, rect.y);
+                                let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                                cv.rectangle(outputFrame, p1, p2, option.color, 2, cv.LINE_AA, 0);
+
+                                // Add label with hue and area
+                                const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                let colorName = getColorName(detHue);
+                                let label = `${option.prefix.toUpperCase()}:${colorName} H${detHue} S${detSat} ${Math.round(area)}px`;
+                                cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
+                                    cv.FONT_HERSHEY_SIMPLEX, 0.4, option.color, 1, cv.LINE_AA);
+                            }
+                        }
+
+                        optionMask.delete();
+                    }
+                }
+
+                // High Saturation Detection
+                if (enableSat) {
+                    const satMin = parseInt(document.getElementById('sat-min').value, 10);
+                    const minSize = parseInt(document.getElementById('sat-min-size').value, 10);
+                    const maxSize = parseInt(document.getElementById('sat-max-size').value, 10);
+
+                    let satChannel = new cv.MatVector();
+                    cv.split(hsvMat, satChannel);
+                    let sat = satChannel.get(1);
+
+                    let satMask = new cv.Mat();
+                    let satLow = new cv.Mat(sat.rows, sat.cols, sat.type(), new cv.Scalar(satMin));
+                    let satHigh = new cv.Mat(sat.rows, sat.cols, sat.type(), new cv.Scalar(255));
+                    cv.inRange(sat, satLow, satHigh, satMask);
+
+                    satLow.delete();
+                    satHigh.delete();
+                    sat.delete();
+                    satChannel.delete();
+
+                    // Properly clean up old contours
+                    if (contours) {
+                        for (let i = 0; i < contours.size(); ++i) {
+                            contours.get(i).delete();
+                        }
+                        contours.delete();
+                    }
+                    contours = new cv.MatVector();
+
+                    cv.findContours(satMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                    for (let i = 0; i < contours.size(); ++i) {
+                        const contour = contours.get(i);
+                        const area = cv.contourArea(contour, false);
+
+                        if (area >= minSize && area <= maxSize) {
+                            let rect = cv.boundingRect(contour);
+                            const cx = rect.x + Math.floor(rect.width / 2);
+                            const cy = rect.y + Math.floor(rect.height / 2);
+
+                            if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                                const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                const detSat = hsvMat.ucharPtr(cy, cx)[1];
+
+                                // Check if color is excluded
+                                if (isExcludedColor(detHue)) continue;
+
+                                // Smart filter check
+                                if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
+                            }
+
+                            satCount++;
+
+                            let p1 = new cv.Point(rect.x, rect.y);
+                            let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                            cv.rectangle(outputFrame, p1, p2, [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+
+                            // Add label (cx, cy already declared above)
+                            const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                            let label = `SAT:${detSat} ${Math.round(area)}px`;
+                            cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
+                                cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
+                        }
+                    }
+                    
+                    satMask.delete();
+                }
+
+                cv.imshow('canvas-out', outputFrame);
+                outputFrame.delete();
+
+                document.getElementById('hsv-count').textContent = hsvCount;
+                document.getElementById('sat-count').textContent = satCount;
+                document.getElementById('total-count').textContent = hsvCount + satCount;
+
+            } catch (err) {
+                console.error("OpenCV processing error:", err);
+                
+                // Try to recover gracefully
+                const errorString = err.toString();
+                
+                if (errorString.includes("Assertion") || errorString.includes("empty")) {
+                    console.warn("Recoverable error, attempting to continue...");
+                    // Don't stop processing, just skip this frame
+                    return;
+                }
+                
+                // For serious errors, try to reinitialize
+                if (srcMat && rgbMat && hsvMat) {
+                    try {
+                        if (!srcMat.isDeleted()) srcMat.delete();
+                        if (!rgbMat.isDeleted()) rgbMat.delete();
+                        if (!hsvMat.isDeleted()) hsvMat.delete();
+                        if (!maskMat.isDeleted()) maskMat.delete();
+
+                        srcMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC4);
+                        rgbMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                        hsvMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC3);
+                        maskMat = new cv.Mat(video.videoHeight, video.videoWidth, cv.CV_8UC1);
+
+                        console.log("Mats reinitialized successfully");
+                        return; // Continue processing
+                    } catch (reinitErr) {
+                        console.error("Failed to reinitialize:", reinitErr);
+                    }
+                }
+                
+                // Only stop if we can't recover
+                pauseProcessing();
+                updateStatus(`Error: Processing stopped. Try reloading video.`, "text-red-400");
+            }
+        }
+        
+        function getColorName(hue) {
+            if (hue <= 10 || hue >= 170) return "Red";
+            if (hue <= 25) return "Orange";
+            if (hue <= 35) return "Yellow";
+            if (hue <= 85) return "Green";
+            if (hue <= 125) return "Cyan";
+            if (hue <= 155) return "Blue";
+            return "Purple";
+        }
+        
+        function updateStatus(message, colorClass) {
+            const statusEl = document.getElementById('status-msg');
+            statusEl.textContent = `Status: ${message}`;
+            statusEl.className = `mb-4 ${colorClass}`;
+        }
+    </script>
+</body>
+</html>
