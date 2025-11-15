@@ -121,109 +121,219 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                     <!-- HSV Controls -->
                     <div id="hsv-controls">
-                        <h3 class="text-lg font-medium text-green-400 mb-2">HSV Settings</h3>
-                        <!-- Color Presets -->
-                        <div class="mb-3">
-                            <div class="text-xs text-gray-400 mb-1">Quick Color Presets (select to detect):</div>
-                            <div class="flex gap-1 flex-wrap">
-                                <button class="preset-btn bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded" data-hue-min="0" data-hue-max="10">Red</button>
-                                <button class="preset-btn bg-red-800 hover:bg-red-900 text-white text-xs px-2 py-1 rounded" data-hue-min="170" data-hue-max="179">Dark Red</button>
-                                <button class="preset-btn bg-orange-600 hover:bg-orange-700 text-white text-xs px-2 py-1 rounded" data-hue-min="11" data-hue-max="25">Orange</button>
-                                <button class="preset-btn bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded" data-hue-min="26" data-hue-max="35">Yellow</button>
-                                <button class="preset-btn bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded" data-hue-min="36" data-hue-max="85">Green</button>
-                                <button class="preset-btn bg-cyan-600 hover:bg-cyan-700 text-white text-xs px-2 py-1 rounded" data-hue-min="86" data-hue-max="125">Cyan</button>
-                                <button class="preset-btn bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded" data-hue-min="126" data-hue-max="155">Blue</button>
-                                <button class="preset-btn bg-purple-600 hover:bg-purple-700 text-white text-xs px-2 py-1 rounded" data-hue-min="156" data-hue-max="169">Purple</button>
-                            </div>
-                        </div>
+                        <h3 class="text-lg font-medium text-green-400 mb-2">HSV Color Ranges</h3>
 
-                        <!-- Color Exclusion -->
-                        <div class="mb-3 p-2 bg-gray-700 rounded">
-                            <div class="text-xs text-gray-300 font-semibold mb-2">Exclude Colors (check to ignore during detection):</div>
-                            <div class="grid grid-cols-4 md:grid-cols-8 gap-2">
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="0" data-hue-max="10">
-                                    <span>Red</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="11" data-hue-max="25">
-                                    <span>Orange</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="26" data-hue-max="35">
-                                    <span>Yellow</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="36" data-hue-max="85">
-                                    <span>Green</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="86" data-hue-max="125">
-                                    <span>Cyan</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="126" data-hue-max="155">
-                                    <span>Blue</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="156" data-hue-max="169">
-                                    <span>Purple</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                    <input type="checkbox" class="exclude-color-check" data-hue-min="170" data-hue-max="179">
-                                    <span>Dark Red</span>
+                        <!-- HSV Option 1 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-green-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv1-enabled" class="w-4 h-4" checked>
+                                    <span class="font-semibold text-green-400">HSV Option 1</span>
                                 </label>
                             </div>
-                        </div>
-
-                        <!-- Preview Canvas -->
-                        <div class="mb-3 bg-gray-900 rounded p-2">
-                            <div class="text-xs text-gray-400 mb-1">Color Preview (what will be detected):</div>
-                            <canvas id="hsv-preview" width="200" height="30" class="w-full rounded"></canvas>
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Hue (0-179, OpenCV scale)</span>
-                                <div class="flex gap-2 items-center">
-                                    <input type="number" id="h-min-num" min="0" max="179" value="0" class="w-14 bg-gray-700 text-white px-1 py-0 rounded text-xs">
-                                    <span>-</span>
-                                    <input type="number" id="h-max-num" min="0" max="179" value="179" class="w-14 bg-gray-700 text-white px-1 py-0 rounded text-xs">
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv1-h-min-val">0</span> - <span id="hsv1-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv1-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv1-s-min-val">150</span> - <span id="hsv1-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv1-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv1-v-min-val">100</span> - <span id="hsv1-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv1-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv1-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <input type="range" id="h-min" min="0" max="179" value="0" class="flex-1">
-                                <input type="range" id="h-max" min="0" max="179" value="179" class="flex-1">
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv1-preview" width="200" height="30" class="w-full rounded"></canvas>
                             </div>
-                            <div class="text-xs text-gray-500 mt-1">Note: OpenCV uses 0-179 for hue (not 0-360). Red=0-10/170-179, Green=36-85, Blue=126-155</div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Saturation</span>
-                                <span><span id="s-min-val">150</span> - <span id="s-max-val">255</span></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="range" id="s-min" min="0" max="255" value="150" class="flex-1">
-                                <input type="range" id="s-max" min="0" max="255" value="255" class="flex-1">
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Value</span>
-                                <span><span id="v-min-val">100</span> - <span id="v-max-val">255</span></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="range" id="v-min" min="0" max="255" value="100" class="flex-1">
-                                <input type="range" id="v-max" min="0" max="255" value="255" class="flex-1">
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv1-size-min-val">200</span> - <span id="hsv1-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv1-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv1-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Size Range (pixels)</span>
-                                <span><span id="hsv-size-min-val">200</span> - <span id="hsv-size-max-val">20000</span></span>
+
+                        <!-- HSV Option 2 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-blue-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv2-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-blue-400">HSV Option 2</span>
+                                </label>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <input type="range" id="hsv-min-size" min="50" max="2000" value="200" class="flex-1">
-                                <input type="range" id="hsv-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv2-h-min-val">0</span> - <span id="hsv2-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv2-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv2-s-min-val">150</span> - <span id="hsv2-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv2-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv2-v-min-val">100</span> - <span id="hsv2-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv2-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv2-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv2-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv2-size-min-val">200</span> - <span id="hsv2-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv2-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv2-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HSV Option 3 -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-cyan-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv3-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-cyan-400">HSV Option 3</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv3-h-min-val">0</span> - <span id="hsv3-h-max-val">179</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv3-h-max" min="0" max="179" value="179" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv3-s-min-val">150</span> - <span id="hsv3-s-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv3-s-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv3-v-min-val">100</span> - <span id="hsv3-v-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv3-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv3-v-max" min="0" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv3-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv3-size-min-val">200</span> - <span id="hsv3-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv3-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv3-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- HSV Exclusion -->
+                        <div class="mb-3 p-3 bg-gray-800 border border-red-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="hsv-exclusion-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-red-400">HSV Exclusion (ignore this range)</span>
+                                </label>
+                            </div>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>H (Hue)</span>
+                                        <span><span id="hsv-ex-h-min-val">0</span> - <span id="hsv-ex-h-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-h-max" min="0" max="179" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>S (Saturation)</span>
+                                        <span><span id="hsv-ex-s-min-val">0</span> - <span id="hsv-ex-s-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-s-min" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-s-max" min="0" max="255" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>V (Value)</span>
+                                        <span><span id="hsv-ex-v-min-val">0</span> - <span id="hsv-ex-v-max-val">0</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="hsv-ex-v-min" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv-ex-v-max" min="0" max="255" value="0" class="flex-1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
+                                <canvas id="hsv-ex-preview" width="200" height="30" class="w-full rounded"></canvas>
                             </div>
                         </div>
                     </div>
@@ -231,29 +341,39 @@
                     <!-- Saturation Controls moved from below -->
                     <div id="sat-controls">
                         <h3 class="text-lg font-medium text-purple-400 mb-2">High Saturation Settings</h3>
-                        <!-- Preview Canvas -->
-                        <div class="mb-3 bg-gray-900 rounded p-2">
-                            <div class="text-xs text-gray-400 mb-1">Saturation Preview (what will be detected):</div>
-                            <canvas id="sat-preview" width="200" height="30" class="w-full rounded"></canvas>
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Min Saturation</span>
-                                <span id="sat-min-val">200</span>
+                        
+                        <div class="mb-3 p-3 bg-gray-800 border border-purple-500 rounded">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-semibold text-purple-400 text-sm">Saturation Detection</span>
                             </div>
-                            <input type="range" id="sat-min" min="50" max="255" value="200" class="w-full">
-                        </div>
-                        <div class="mb-4">
-                            <div class="flex justify-between text-sm mb-1">
-                                <span>Size Range (pixels)</span>
-                                <span><span id="sat-size-min-val">200</span> - <span id="sat-size-max-val">20000</span></span>
+                            <div class="space-y-2 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span>Saturation Range</span>
+                                        <span><span id="sat-min-val">200</span> - <span id="sat-max-val">255</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="range" id="sat-min" min="50" max="255" value="200" class="flex-1">
+                                        <input type="range" id="sat-max" min="50" max="255" value="255" class="flex-1">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <input type="range" id="sat-min-size" min="50" max="2000" value="200" class="flex-1">
-                                <input type="range" id="sat-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                            <div class="mt-2 bg-gray-900 rounded p-2">
+                                <div class="text-xs text-gray-400 mb-1">Saturation Preview:</div>
+                                <canvas id="sat-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="sat-size-min-val">200</span> - <span id="sat-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="sat-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="sat-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </div>                    
                 </div>
 
             </div>
@@ -275,47 +395,20 @@
                     </div>
                 </div>
                 <div id="analysis-chart-container" class="hidden">
-                    <canvas id="color-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Hue Distribution</h4>
+                        <canvas id="color-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Saturation Distribution</h4>
+                        <canvas id="saturation-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
+                    <div class="mb-3">
+                        <h4 class="text-sm font-medium mb-1">Value Distribution</h4>
+                        <canvas id="value-histogram" width="800" height="300" class="w-full bg-gray-900 rounded"></canvas>
+                    </div>
                     <div id="analysis-stats" class="mt-3 text-sm grid grid-cols-2 md:grid-cols-4 gap-3"></div>
 
-                    <!-- Color Exclusion Checkboxes -->
-                    <div class="mt-4 p-3 bg-gray-700 rounded">
-                        <div class="text-xs text-gray-300 font-semibold mb-2">Exclude Specific Colors (check to remove from detection):</div>
-                        <div class="grid grid-cols-4 md:grid-cols-8 gap-2">
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="0" data-hue-max="10">
-                                <span>Red</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="11" data-hue-max="25">
-                                <span>Orange</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="26" data-hue-max="35">
-                                <span>Yellow</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="36" data-hue-max="85">
-                                <span>Green</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="86" data-hue-max="125">
-                                <span>Cyan</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="126" data-hue-max="155">
-                                <span>Blue</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="156" data-hue-max="169">
-                                <span>Purple</span>
-                            </label>
-                            <label class="flex items-center space-x-1 cursor-pointer text-xs">
-                                <input type="checkbox" class="exclude-color-check" data-hue-min="170" data-hue-max="179">
-                                <span>Dark Red</span>
-                            </label>
-                        </div>
-                    </div>
                 </div>
                 <p id="analysis-status" class="text-sm text-gray-400">Click a button above to analyze colors</p>
             </div>
@@ -633,56 +726,40 @@
             });
 
             const sliders = [
-                'h-min', 'h-max', 's-min', 's-max', 'v-min', 'v-max',
-                'hsv-min-size', 'hsv-max-size',
-                'sat-min', 'sat-min-size', 'sat-max-size'
+                'hsv1-min-size', 'hsv1-max-size',
+                'hsv2-min-size', 'hsv2-max-size',
+                'hsv3-min-size', 'hsv3-max-size',
+                'sat-min', 'sat-max', 'sat-min-size', 'sat-max-size'
             ];
             sliders.forEach(id => {
-                document.getElementById(id).addEventListener('input', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
 
-                    let valId = id + '-val';
-                    if (id === 'hsv-min-size') valId = 'hsv-size-min-val';
-                    if (id === 'hsv-max-size') valId = 'hsv-size-max-val';
-                    if (id === 'sat-min-size') valId = 'sat-size-min-val';
-                    if (id === 'sat-max-size') valId = 'sat-size-max-val';
+                        let valId = id + '-val';
+                        if (id === 'hsv1-min-size') valId = 'hsv1-size-min-val';
+                        if (id === 'hsv1-max-size') valId = 'hsv1-size-max-val';
+                        if (id === 'hsv2-min-size') valId = 'hsv2-size-min-val';
+                        if (id === 'hsv2-max-size') valId = 'hsv2-size-max-val';
+                        if (id === 'hsv3-min-size') valId = 'hsv3-size-min-val';
+                        if (id === 'hsv3-max-size') valId = 'hsv3-size-max-val';
+                        if (id === 'sat-min-size') valId = 'sat-size-min-val';
+                        if (id === 'sat-max-size') valId = 'sat-size-max-val';
 
                     if(document.getElementById(valId)) {
                         document.getElementById(valId).textContent = e.target.value;
                     }
 
-                    // Sync with number input if it exists
-                    const numInput = document.getElementById(id + '-num');
-                    if (numInput) {
-                        numInput.value = e.target.value;
-                    }
 
                     if (!isProcessing && !isProgrammaticChange) {
                         processSingleFrame();
                     }
-                });
-            });
-
-            // Number input sync (hue min/max)
-            ['h-min', 'h-max'].forEach(id => {
-                const numInput = document.getElementById(id + '-num');
-                if (numInput) {
-                    numInput.addEventListener('input', (e) => {
-                        const value = parseInt(e.target.value);
-                        if (!isNaN(value) && value >= 0 && value <= 179) {
-                            document.getElementById(id).value = value;
-                            // Note: h-min-val and h-max-val don't exist anymore (using number inputs instead)
-                            updateColorPreviews();
-                            updateSettingsIndicator();
-                            if (!isProcessing) {
-                                processSingleFrame();
-                            }
-                        }
                     });
                 }
             });
-            
+
             // Filter strength slider - update display only, don't reprocess
             document.getElementById('filter-strength').addEventListener('input', (e) => {
                 document.getElementById('filter-strength-val').textContent = e.target.value;
@@ -722,12 +799,15 @@
                     // Set flag to prevent cascading processSingleFrame calls
                     isProgrammaticChange = true;
 
-                    // Update all related elements
-                    document.getElementById('h-min').value = hueMin;
-                    document.getElementById('h-max').value = hueMax;
-                    document.getElementById('h-min-num').value = hueMin;
-                    document.getElementById('h-max-num').value = hueMax;
+                    // Update HSV Option 1 with preset values
+                    document.getElementById('hsv1-h-min').value = hueMin;
+                    document.getElementById('hsv1-h-max').value = hueMax;
+                    document.getElementById('hsv1-s-min').value = 150;
+                    document.getElementById('hsv1-s-max').value = 255;
+                    document.getElementById('hsv1-v-min').value = 100;
+                    document.getElementById('hsv1-v-max').value = 255;
                     document.getElementById('enable-hsv').checked = true;
+                    document.getElementById('hsv1-enabled').checked = true;
 
                     // Clear flag
                     isProgrammaticChange = false;
@@ -742,8 +822,80 @@
 
             // Color preview canvases
             updateColorPreviews();
-            ['h-min', 'h-max', 's-min', 's-max', 'v-min', 'v-max', 'sat-min'].forEach(id => {
-                document.getElementById(id).addEventListener('input', updateColorPreviews);
+            ['sat-min', 'sat-max'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        // Update value display
+                        const valEl = document.getElementById(`${id}-val`);
+                        if (valEl) {
+                            valEl.textContent = e.target.value;
+                        }
+                        
+                        // Update preview
+                        updateSaturationPreview();
+                        
+                        // Reprocess if not processing
+                        if (!isProcessing && !isProgrammaticChange) {
+                            processSingleFrame();
+                        }
+                    });
+                }
+            });            
+            // ['sat-min', 'sat-max'].forEach(id => {
+            //     const el = document.getElementById(id);
+            //     if (el) el.addEventListener('input', updateColorPreviews);
+            // });
+
+            // Add event listeners for HSV option inputs (1, 2, 3)
+            const hsvOptionInputs = [
+                { ids: ['hsv1-h-min', 'hsv1-h-max', 'hsv1-s-min', 'hsv1-s-max', 'hsv1-v-min', 'hsv1-v-max'], prefix: 'hsv1' },
+                { ids: ['hsv2-h-min', 'hsv2-h-max', 'hsv2-s-min', 'hsv2-s-max', 'hsv2-v-min', 'hsv2-v-max'], prefix: 'hsv2' },
+                { ids: ['hsv3-h-min', 'hsv3-h-max', 'hsv3-s-min', 'hsv3-s-max', 'hsv3-v-min', 'hsv3-v-max'], prefix: 'hsv3' }
+            ];
+
+            hsvOptionInputs.forEach(option => {
+                option.ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('input', () => {
+                            // Update value display
+                            const valEl = document.getElementById(`${id}-val`);
+                            if (valEl) {
+                                valEl.textContent = el.value;
+                            }
+
+                            // Only update this option's preview
+                            updateHSVPreview(option.prefix);
+                            if (!isProcessing && !isProgrammaticChange) {
+                                processSingleFrame();
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Add separate event listeners for HSV exclusion inputs
+            const hsvExclusionIds = [
+                'hsv-ex-h-min', 'hsv-ex-h-max', 'hsv-ex-s-min', 'hsv-ex-s-max', 'hsv-ex-v-min', 'hsv-ex-v-max'
+            ];
+            hsvExclusionIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        // Update value display
+                        const valEl = document.getElementById(`${id}-val`);
+                        if (valEl) {
+                            valEl.textContent = el.value;
+                        }
+
+                        // Only update exclusion preview
+                        updateHSVPreview('hsv-ex');
+                        if (!isProcessing && !isProgrammaticChange) {
+                            processSingleFrame();
+                        }
+                    });
+                }
             });
 
             // Batch processing button
@@ -781,8 +933,9 @@
             document.getElementById('enable-hsv').addEventListener('change', updateSettingsIndicator);
             document.getElementById('enable-sat').addEventListener('change', updateSettingsIndicator);
             document.getElementById('enable-smart-filter').addEventListener('change', updateSettingsIndicator);
-            ['h-min', 'h-max', 's-min', 's-max', 'hsv-min-size', 'hsv-max-size'].forEach(id => {
-                document.getElementById(id).addEventListener('input', updateSettingsIndicator);
+            ['hsv-min-size', 'hsv-max-size'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', updateSettingsIndicator);
             });
             updateSettingsIndicator(); // Initial update
 
@@ -1021,19 +1174,20 @@
                     hueMax = Math.min(179, targetHue + 35);
                 }
 
-                // Set HSV detection to target this hue range
-                document.getElementById('h-min').value = hueMin;
-                document.getElementById('h-max').value = hueMax;
-                document.getElementById('h-min-num').value = hueMin;
-                document.getElementById('h-max-num').value = hueMax;
+                // Set HSV Option 1 to target this hue range
+                document.getElementById('hsv1-h-min').value = hueMin;
+                document.getElementById('hsv1-h-max').value = hueMax;
 
                 // Use 50th percentile (median) saturation for MAXIMUM sensitivity, minimum of 80
                 const minSat = Math.max(80, satP50);
-                document.getElementById('s-min').value = minSat;
-                document.getElementById('s-min-val').textContent = minSat;
+                document.getElementById('hsv1-s-min').value = minSat;
+                document.getElementById('hsv1-s-max').value = 255;
+                document.getElementById('hsv1-v-min').value = 100;
+                document.getElementById('hsv1-v-max').value = 255;
 
-                // Enable HSV detection
+                // Enable HSV detection and HSV Option 1
                 document.getElementById('enable-hsv').checked = true;
+                document.getElementById('hsv1-enabled').checked = true;
 
                 // DISABLE smart filter by default - it may be filtering out the target!
                 // User can manually enable if needed
@@ -1075,65 +1229,193 @@
         }
 
         function updateColorPreviews() {
-            // HSV Preview
-            const hsvCanvas = document.getElementById('hsv-preview');
-            const hsvCtx = hsvCanvas.getContext('2d');
-            const hMin = parseInt(document.getElementById('h-min').value);
-            const hMax = parseInt(document.getElementById('h-max').value);
-            const sMin = parseInt(document.getElementById('s-min').value);
-            const sMax = parseInt(document.getElementById('s-max').value);
-            const vMin = parseInt(document.getElementById('v-min').value);
-            const vMax = parseInt(document.getElementById('v-max').value);
+            // Update previews for all HSV options
+            updateHSVPreview('hsv1');
+            updateHSVPreview('hsv2');
+            updateHSVPreview('hsv3');
+            updateHSVPreview('hsv-ex');
+            updateSaturationPreview();
+        }
 
-            // Draw HSV range gradient
-            for (let x = 0; x < hsvCanvas.width; x++) {
-                const hue = Math.floor((x / hsvCanvas.width) * 180);
-                let inRange = hue >= hMin && hue <= hMax;
+        // Debounce timer for preview updates
+        let previewUpdateTimers = {};
 
-                // Convert HSV to RGB for display
-                const s = 255, v = 255;
-                const c = v * s / 255;
-                const x2 = c * (1 - Math.abs(((hue * 2) % 120) / 60 - 1));
-                const m = v - c;
-                let r, g, b;
+        function updateHSVPreview(prefix) {
+            // Clear any pending update for this preview
+            if (previewUpdateTimers[prefix]) {
+                clearTimeout(previewUpdateTimers[prefix]);
+            }
 
-                if (hue < 30) { r = c; g = x2; b = 0; }
-                else if (hue < 60) { r = x2; g = c; b = 0; }
-                else if (hue < 90) { r = 0; g = c; b = x2; }
-                else if (hue < 120) { r = 0; g = x2; b = c; }
-                else if (hue < 150) { r = x2; g = 0; b = c; }
-                else { r = c; g = 0; b = x2; }
+            // Debounce the update - wait 50ms before drawing
+            previewUpdateTimers[prefix] = setTimeout(() => {
+                drawHSVPreview(prefix);
+            }, 50);
+        }
+        function drawHSVPreview(prefix) {
+            const canvas = document.getElementById(`${prefix}-preview`);
+            if (!canvas) return;
 
-                r = Math.round((r + m));
-                g = Math.round((g + m));
-                b = Math.round((b + m));
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Get the actual current values for THIS specific prefix
+            const hMinEl = document.getElementById(`${prefix}-h-min`);
+            const hMaxEl = document.getElementById(`${prefix}-h-max`);
+            const sMinEl = document.getElementById(`${prefix}-s-min`);
+            const sMaxEl = document.getElementById(`${prefix}-s-max`);
+            const vMinEl = document.getElementById(`${prefix}-v-min`);
+            const vMaxEl = document.getElementById(`${prefix}-v-max`);
+
+            if (!hMinEl || !hMaxEl || !sMinEl || !sMaxEl || !vMinEl || !vMaxEl) {
+                return;
+            }
+
+            const hMin = parseInt(hMinEl.value);
+            const hMax = parseInt(hMaxEl.value);
+            const sMin = parseInt(sMinEl.value);
+            const sMax = parseInt(sMaxEl.value);
+            const vMin = parseInt(vMinEl.value);
+            const vMax = parseInt(vMaxEl.value);
+
+            // Use mid-range saturation and value for preview
+            const previewSat = Math.floor((sMin + sMax) / 2);
+            const previewVal = Math.floor((vMin + vMax) / 2);
+
+            // Clear canvas first - THIS IS CRITICAL
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw hue gradient across the canvas
+            for (let x = 0; x < canvas.width; x++) {
+                // Map x position to hue value (0-179 for OpenCV)
+                const hue = Math.floor((x / canvas.width) * 180);
+
+                // Check if this hue is in range
+                let inRange = false;
+                if (hMin <= hMax) {
+                    inRange = (hue >= hMin && hue <= hMax);
+                } else {
+                    // Wraparound case (e.g., 170-10 includes 170-179 and 0-10)
+                    inRange = (hue >= hMin || hue <= hMax);
+                }
 
                 if (inRange) {
-                    hsvCtx.fillStyle = `rgb(${r},${g},${b})`;
+                    // Convert OpenCV HSV to RGB using proper conversion
+                    const rgb = opencvHsvToRgb(hue, previewSat, previewVal);
+                    ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
                 } else {
-                    hsvCtx.fillStyle = `rgba(${r},${g},${b},0.2)`;
+                    ctx.fillStyle = `rgba(128, 128, 128, 0.2)`;
                 }
-                hsvCtx.fillRect(x, 0, 1, hsvCanvas.height);
+                ctx.fillRect(x, 0, 1, canvas.height);
+            }
+        }        
+
+        // Proper OpenCV HSV to RGB conversion
+        function opencvHsvToRgb(h, s, v) {
+            // OpenCV uses H: 0-179, S: 0-255, V: 0-255
+            // Normalize to 0-1 range
+            const hNorm = h / 179.0;
+            const sNorm = s / 255.0;
+            const vNorm = v / 255.0;
+
+            const c = vNorm * sNorm;
+            const x = c * (1 - Math.abs(((hNorm * 6) % 2) - 1));
+            const m = vNorm - c;
+
+            let r, g, b;
+            const hSector = hNorm * 6;
+
+            if (hSector < 1) {
+                r = c; g = x; b = 0;
+            } else if (hSector < 2) {
+                r = x; g = c; b = 0;
+            } else if (hSector < 3) {
+                r = 0; g = c; b = x;
+            } else if (hSector < 4) {
+                r = 0; g = x; b = c;
+            } else if (hSector < 5) {
+                r = x; g = 0; b = c;
+            } else {
+                r = c; g = 0; b = x;
             }
 
-            // Saturation Preview
-            const satCanvas = document.getElementById('sat-preview');
-            const satCtx = satCanvas.getContext('2d');
-            const satMin = parseInt(document.getElementById('sat-min').value);
-
-            for (let x = 0; x < satCanvas.width; x++) {
-                const sat = Math.floor((x / satCanvas.width) * 255);
-                const gray = 128;
-                const alpha = sat / 255;
-
-                if (sat >= satMin) {
-                    satCtx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
-                } else {
-                    satCtx.fillStyle = `rgba(128, 128, 128, 0.2)`;
-                }
-                satCtx.fillRect(x, 0, 1, satCanvas.height);
-            }
+            return [
+                Math.round((r + m) * 255),
+                Math.round((g + m) * 255),
+                Math.round((b + m) * 255)
+            ];
         }
+        // function updateSaturationPreview() {
+        //     // Saturation Preview
+        //     const satCanvas = document.getElementById('sat-preview');
+        //     if (!satCanvas) return;
+
+        //     const satCtx = satCanvas.getContext('2d');
+        //     const satMinEl = document.getElementById('sat-min');
+        //     const satMaxEl = document.getElementById('sat-max');
+
+        //     if (!satMinEl || !satMaxEl) return;
+
+        //     const satMin = parseInt(satMinEl.value);
+        //     const satMax = parseInt(satMaxEl.value);
+
+        //     for (let x = 0; x < satCanvas.width; x++) {
+        //         const sat = Math.floor((x / satCanvas.width) * 255);
+        //         const alpha = sat / 255;
+
+        //         if (sat >= satMin && sat <= satMax) {
+        //             satCtx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+        //         } else {
+        //             satCtx.fillStyle = `rgba(128, 128, 128, 0.2)`;
+        //         }
+        //         satCtx.fillRect(x, 0, 1, satCanvas.height);
+        //     }
+        // }
+            let satPreviewTimer = null;
+
+            function updateSaturationPreview() {
+                // Clear any pending update
+                if (satPreviewTimer) {
+                    clearTimeout(satPreviewTimer);
+                }
+
+                // Debounce the update
+                satPreviewTimer = setTimeout(() => {
+                    drawSaturationPreview();
+                }, 50);
+            }
+
+            function drawSaturationPreview() {
+                const satCanvas = document.getElementById('sat-preview');
+                if (!satCanvas) return;
+
+                const satCtx = satCanvas.getContext('2d');
+                if (!satCtx) return;
+
+                const satMinEl = document.getElementById('sat-min');
+                const satMaxEl = document.getElementById('sat-max');
+
+                if (!satMinEl || !satMaxEl) return;
+
+                const satMin = parseInt(satMinEl.value);
+                const satMax = parseInt(satMaxEl.value);
+
+                // Clear canvas first - CRITICAL
+                satCtx.clearRect(0, 0, satCanvas.width, satCanvas.height);
+
+                // Draw saturation gradient
+                for (let x = 0; x < satCanvas.width; x++) {
+                    const sat = Math.floor((x / satCanvas.width) * 255);
+                    const alpha = sat / 255;
+
+                    if (sat >= satMin && sat <= satMax) {
+                        satCtx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+                    } else {
+                        satCtx.fillStyle = `rgba(128, 128, 128, 0.2)`;
+                    }
+                    satCtx.fillRect(x, 0, 1, satCanvas.height);
+                }
+            }
+
 
         function analyzeCurrentFrame() {
             if (!video || !video.videoWidth) {
@@ -1231,6 +1513,8 @@
 
         function analyzeFrame(hsvMat) {
             const hues = {};
+            const saturations = {};
+            const values = {};
             const sats = [];
             const h = hsvMat.rows;
             const w = hsvMat.cols;
@@ -1246,10 +1530,19 @@
                         hues[hue] = (hues[hue] || 0) + 1;
                         if (sat > 120) sats.push(sat);
                     }
+
+                    // Collect saturation and value distribution
+                    saturations[sat] = (saturations[sat] || 0) + 1;
+                    values[val] = (values[val] || 0) + 1;
                 }
             }
 
-            return { hues: Object.entries(hues).map(([h, c]) => ({h: parseInt(h), count: c})), sats };
+            return {
+                hues: Object.entries(hues).map(([h, c]) => ({h: parseInt(h), count: c})),
+                saturations: Object.entries(saturations).map(([s, c]) => ({s: parseInt(s), count: c})),
+                values: Object.entries(values).map(([v, c]) => ({v: parseInt(v), count: c})),
+                sats
+            };
         }
 
         function drawColorHistogram(colorData) {
@@ -1314,18 +1607,106 @@
             `;
 
             document.getElementById('analysis-chart-container').classList.remove('hidden');
+
+            // Also draw saturation and value histograms
+            drawSaturationHistogram(colorData);
+            drawValueHistogram(colorData);
+        }
+
+        function drawSaturationHistogram(colorData) {
+            const canvas = document.getElementById('saturation-histogram');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Aggregate saturation data
+            const satCounts = new Array(256).fill(0);
+            if (colorData.saturations && colorData.saturations.length > 0) {
+                colorData.saturations.forEach(item => {
+                    if (item.s !== undefined) satCounts[item.s] = item.count;
+                });
+            }
+
+            const maxCount = Math.max(...satCounts);
+            if (maxCount === 0) return;
+
+            // Draw bars
+            const barWidth = width / 256;
+            for (let s = 0; s < 256; s++) {
+                const barHeight = (satCounts[s] / maxCount) * (height - 40);
+
+                // Color gradient from gray (0 sat) to magenta (255 sat)
+                const alpha = s / 255;
+                ctx.fillStyle = `rgba(255, 0, 255, ${alpha})`;
+                ctx.fillRect(s * barWidth, height - barHeight - 20, barWidth, barHeight);
+            }
+
+            // Add labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px monospace';
+            ctx.fillText('0', 5, height - 5);
+            ctx.fillText('128', width / 2 - 15, height - 5);
+            ctx.fillText('255', width - 30, height - 5);
+        }
+
+        function drawValueHistogram(colorData) {
+            const canvas = document.getElementById('value-histogram');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Aggregate value data
+            const valCounts = new Array(256).fill(0);
+            if (colorData.values && colorData.values.length > 0) {
+                colorData.values.forEach(item => {
+                    if (item.v !== undefined) valCounts[item.v] = item.count;
+                });
+            }
+
+            const maxCount = Math.max(...valCounts);
+            if (maxCount === 0) return;
+
+            // Draw bars
+            const barWidth = width / 256;
+            for (let v = 0; v < 256; v++) {
+                const barHeight = (valCounts[v] / maxCount) * (height - 40);
+
+                // Color gradient from black (0 val) to white (255 val)
+                const brightness = v;
+                ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+                ctx.fillRect(v * barWidth, height - barHeight - 20, barWidth, barHeight);
+            }
+
+            // Add labels
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px monospace';
+            ctx.fillText('0', 5, height - 5);
+            ctx.fillText('128', width / 2 - 15, height - 5);
+            ctx.fillText('255', width - 30, height - 5);
         }
 
         function updateSettingsIndicator() {
             const hsvEnabled = document.getElementById('enable-hsv').checked;
             const satEnabled = document.getElementById('enable-sat').checked;
             const smartFilter = document.getElementById('enable-smart-filter').checked;
-            const hMin = document.getElementById('h-min').value;
-            const hMax = document.getElementById('h-max').value;
-            const sMin = document.getElementById('s-min').value;
-            const sMax = document.getElementById('s-max').value;
-            const sizeMin = document.getElementById('hsv-min-size').value;
-            const sizeMax = document.getElementById('hsv-max-size').value;
+
+            // Get active HSV options
+            const hsv1Enabled = document.getElementById('hsv1-enabled')?.checked;
+            const hsv2Enabled = document.getElementById('hsv2-enabled')?.checked;
+            const hsv3Enabled = document.getElementById('hsv3-enabled')?.checked;
+
+            let activeOptions = [];
+            if (hsv1Enabled) activeOptions.push('HSV1');
+            if (hsv2Enabled) activeOptions.push('HSV2');
+            if (hsv3Enabled) activeOptions.push('HSV3');
 
             document.getElementById('ind-hsv-enabled').textContent = hsvEnabled ? 'Yes' : 'No';
             document.getElementById('ind-hsv-enabled').className = hsvEnabled ? 'text-green-400' : 'text-gray-500';
@@ -1333,11 +1714,29 @@
             document.getElementById('ind-sat-enabled').textContent = satEnabled ? 'Yes' : 'No';
             document.getElementById('ind-sat-enabled').className = satEnabled ? 'text-purple-400' : 'text-gray-500';
 
-            document.getElementById('ind-hue-range').textContent = `${hMin}-${hMax}`;
-            document.getElementById('ind-sat-range').textContent = `${sMin}-${sMax}`;
+            // Show active HSV options instead of specific ranges
+            const hueRangeEl = document.getElementById('ind-hue-range');
+            if (hueRangeEl) {
+                hueRangeEl.textContent = activeOptions.length > 0 ? activeOptions.join(', ') : 'None';
+            }
+
+            const satRangeEl = document.getElementById('ind-sat-range');
+            if (satRangeEl) {
+                const satMin = document.getElementById('sat-min')?.value || '200';
+                const satMax = document.getElementById('sat-max')?.value || '255';
+                satRangeEl.textContent = `${satMin}-${satMax}`;
+            }
+
             document.getElementById('ind-smart-filter').textContent = smartFilter ? 'On' : 'Off';
             document.getElementById('ind-smart-filter').className = smartFilter ? 'text-orange-400' : 'text-gray-500';
-            document.getElementById('ind-size-range').textContent = `${sizeMin}-${sizeMax}px`;
+
+            // Show size range for HSV1 as a reference
+            const sizeRangeEl = document.getElementById('ind-size-range');
+            if (sizeRangeEl) {
+                const sizeMin = document.getElementById('hsv1-min-size')?.value || '200';
+                const sizeMax = document.getElementById('hsv1-max-size')?.value || '20000';
+                sizeRangeEl.textContent = `${sizeMin}-${sizeMax}px`;
+            }
         }
 
         function useAnalysisAsExclusion() {
@@ -1540,21 +1939,39 @@
                         console.log(`Frame ${frameNum}: Found ${dets.length} detections`);
 
                         // Capture thumbnail with detections drawn
-                        let thumbnail = null;
                         if (dets.length > 0) {
                             // Draw detections on a copy
                             let displayMat = srcMat.clone();
-                            dets.forEach(det => {
-                                if (det.type === 'HSV') {
+
+                            console.log(`Creating thumbnail for frame ${frameNum} with ${dets.length} detections`);
+                            console.log(`srcMat: ${srcMat.cols}x${srcMat.rows}, displayMat: ${displayMat.cols}x${displayMat.rows}`);
+
+                            dets.forEach((det, i) => {
+                                console.log(`  Det ${i}: ${det.type} at (${det.rect.x},${det.rect.y}) size ${det.rect.width}x${det.rect.height}`);
+
+                                // Handle HSV1, HSV2, HSV3, or just HSV
+                                if (det.type && det.type.startsWith('HSV')) {
                                     cv.rectangle(displayMat,
                                         new cv.Point(det.rect.x, det.rect.y),
                                         new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
                                         [0, 255, 0, 255], 2, cv.LINE_AA, 0);
+
+                                    // Add label with detection details
+                                    const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                                    cv.putText(displayMat, label,
+                                        new cv.Point(det.rect.x, det.rect.y - 5),
+                                        cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 255, 0, 255], 1, cv.LINE_AA);
                                 } else if (det.type === 'Sat') {
                                     cv.rectangle(displayMat,
                                         new cv.Point(det.rect.x, det.rect.y),
                                         new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
                                         [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+
+                                    // Add label with detection details
+                                    const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                                    cv.putText(displayMat, label,
+                                        new cv.Point(det.rect.x, det.rect.y - 5),
+                                        cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
                                 }
                             });
 
@@ -1563,7 +1980,10 @@
                             tempCanvas.width = displayMat.cols;
                             tempCanvas.height = displayMat.rows;
                             cv.imshow(tempCanvas, displayMat);
-                            thumbnail = tempCanvas.toDataURL('image/jpeg', 0.7);
+                            const thumbnail = tempCanvas.toDataURL('image/jpeg', 0.7);
+
+                            console.log(`Thumbnail created: ${thumbnail.substring(0, 50)}... (${thumbnail.length} chars)`);
+
                             displayMat.delete();
 
                             batchDetections.push({
@@ -1607,56 +2027,100 @@
                 const enableHsv = document.getElementById('enable-hsv').checked;
                 const enableSat = document.getElementById('enable-sat').checked;
 
-                // HSV Detection
+                // Multi-HSV Detection
                 if (enableHsv) {
-                    const hMin = parseInt(document.getElementById('h-min').value);
-                    const hMax = parseInt(document.getElementById('h-max').value);
-                    const sMin = parseInt(document.getElementById('s-min').value);
-                    const sMax = parseInt(document.getElementById('s-max').value);
-                    const vMin = parseInt(document.getElementById('v-min').value);
-                    const vMax = parseInt(document.getElementById('v-max').value);
-                    const minSize = parseInt(document.getElementById('hsv-min-size').value);
-                    const maxSize = parseInt(document.getElementById('hsv-max-size').value);
+                    const hsvOptions = [
+                        { prefix: 'hsv1', enabled: document.getElementById('hsv1-enabled')?.checked },
+                        { prefix: 'hsv2', enabled: document.getElementById('hsv2-enabled')?.checked },
+                        { prefix: 'hsv3', enabled: document.getElementById('hsv3-enabled')?.checked }
+                    ];
 
-                    let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
-                    let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
-                    cv.inRange(hsvMat, lowMat, highMat, maskMat);
-                    lowMat.delete();
-                    highMat.delete();
-
-                    if (contours) {
-                        for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
-                        contours.delete();
+                    // Get exclusion range if enabled
+                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
+                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
+                    if (exclusionEnabled) {
+                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
+                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
+                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
+                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
+                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
+                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
                     }
-                    contours = new cv.MatVector();
-                    cv.findContours(maskMat, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
 
-                    for (let i = 0; i < contours.size(); ++i) {
-                        const contour = contours.get(i);
-                        const area = cv.contourArea(contour, false);
+                    for (const option of hsvOptions) {
+                        if (!option.enabled) continue;
 
-                        if (area >= minSize && area <= maxSize) {
-                            let rect = cv.boundingRect(contour);
-                            const cx = rect.x + Math.floor(rect.width / 2);
-                            const cy = rect.y + Math.floor(rect.height / 2);
+                        const hMin = parseInt(document.getElementById(`${option.prefix}-h-min`)?.value || 0);
+                        const hMax = parseInt(document.getElementById(`${option.prefix}-h-max`)?.value || 179);
+                        const sMin = parseInt(document.getElementById(`${option.prefix}-s-min`)?.value || 0);
+                        const sMax = parseInt(document.getElementById(`${option.prefix}-s-max`)?.value || 255);
+                        const vMin = parseInt(document.getElementById(`${option.prefix}-v-min`)?.value || 0);
+                        const vMax = parseInt(document.getElementById(`${option.prefix}-v-max`)?.value || 255);
+                        const minSize = parseInt(document.getElementById(`${option.prefix}-min-size`)?.value || 200);
+                        const maxSize = parseInt(document.getElementById(`${option.prefix}-max-size`)?.value || 20000);
 
-                            const detHue = hsvMat.ucharPtr(cy, cx)[0];
-                            const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
+                        let optionMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, optionMask);
+                        lowMat.delete();
+                        highMat.delete();
 
-                            // Check if color is excluded
-                            if (isExcludedColor(detHue)) continue;
-
-                            // Check if color matches terrain baseline
-                            if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
-
-                            const colorName = getColorName(detHue);
-                            detections.push({
-                                type: 'HSV',
-                                desc: `${colorName} H${detHue} S${detSat}`,
-                                area: Math.round(area),
-                                rect: rect
-                            });
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
+                            contours.delete();
                         }
+                        contours = new cv.MatVector();
+                        cv.findContours(optionMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= minSize && area <= maxSize) {
+                                let rect = cv.boundingRect(contour);
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                const detVal = hsvMat.ucharPtr(cy, cx)[2];
+
+                                let skipDetection = false;
+
+                                // Check if color is in exclusion range
+                                if (exclusionEnabled) {
+                                    let inExclusion = false;
+                                    if (exHMin <= exHMax) {
+                                        inExclusion = (detHue >= exHMin && detHue <= exHMax);
+                                    } else {
+                                        inExclusion = (detHue >= exHMin || detHue <= exHMax);
+                                    }
+                                    inExclusion = inExclusion &&
+                                                 (detSat >= exSMin && detSat <= exSMax) &&
+                                                 (detVal >= exVMin && detVal <= exVMax);
+                                    if (inExclusion) skipDetection = true;
+                                }
+
+                                // Check if color is excluded (old system)
+                                if (isExcludedColor(detHue)) skipDetection = true;
+
+                                // Check if color matches terrain baseline
+                                if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+
+                                if (skipDetection) continue;
+
+                                const colorName = getColorName(detHue);
+                                detections.push({
+                                    type: option.prefix.toUpperCase(),
+                                    desc: `${colorName} H${detHue} S${detSat}`,
+                                    area: Math.round(area),
+                                    rect: rect
+                                });
+                            }
+                        }
+
+                        optionMask.delete();
                     }
                 }
 
@@ -1819,7 +2283,7 @@
                 return;
             }
 
-            batchDetections.forEach(frameData => {
+            batchDetections.forEach((frameData, idx) => {
                 const frameCard = document.createElement('div');
                 frameCard.className = 'bg-gray-800 rounded overflow-hidden hover:ring-2 hover:ring-sky-400 transition-all cursor-pointer';
 
@@ -2100,72 +2564,118 @@
 
                 let outputFrame = srcMat.clone();
 
-                // HSV Detection
+                // Multi-HSV Detection with individual options
                 if (enableHsv) {
-                    const hMin = parseInt(document.getElementById('h-min').value, 10);
-                    const hMax = parseInt(document.getElementById('h-max').value, 10);
-                    const sMin = parseInt(document.getElementById('s-min').value, 10);
-                    const sMax = parseInt(document.getElementById('s-max').value, 10);
-                    const vMin = parseInt(document.getElementById('v-min').value, 10);
-                    const vMax = parseInt(document.getElementById('v-max').value, 10);
-                    const minSize = parseInt(document.getElementById('hsv-min-size').value, 10);
-                    const maxSize = parseInt(document.getElementById('hsv-max-size').value, 10);
+                    // Check which HSV options are enabled
+                    const hsvOptions = [
+                        { prefix: 'hsv1', color: [0, 255, 0, 255], enabled: document.getElementById('hsv1-enabled')?.checked },
+                        { prefix: 'hsv2', color: [255, 0, 255, 255], enabled: document.getElementById('hsv2-enabled')?.checked },
+                        { prefix: 'hsv3', color: [0, 255, 255, 255], enabled: document.getElementById('hsv3-enabled')?.checked }
+                    ];
 
-                    let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
-                    let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
-
-                    cv.inRange(hsvMat, lowMat, highMat, maskMat);
-
-                    lowMat.delete();
-                    highMat.delete();
-
-                    // Properly clean up old contours before creating new ones
-                    if (contours) {
-                        for (let i = 0; i < contours.size(); ++i) {
-                            contours.get(i).delete();
-                        }
-                        contours.delete();
+                    // Get exclusion range if enabled
+                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
+                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
+                    if (exclusionEnabled) {
+                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
+                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
+                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
+                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
+                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
+                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
                     }
-                    contours = new cv.MatVector();
 
-                    cv.findContours(maskMat, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+                    // Process each enabled HSV option
+                    for (const option of hsvOptions) {
+                        if (!option.enabled) continue;
 
-                    for (let i = 0; i < contours.size(); ++i) {
-                        const contour = contours.get(i);
-                        const area = cv.contourArea(contour, false);
+                        const hMin = parseInt(document.getElementById(`${option.prefix}-h-min`)?.value || 0);
+                        const hMax = parseInt(document.getElementById(`${option.prefix}-h-max`)?.value || 179);
+                        const sMin = parseInt(document.getElementById(`${option.prefix}-s-min`)?.value || 0);
+                        const sMax = parseInt(document.getElementById(`${option.prefix}-s-max`)?.value || 255);
+                        const vMin = parseInt(document.getElementById(`${option.prefix}-v-min`)?.value || 0);
+                        const vMax = parseInt(document.getElementById(`${option.prefix}-v-max`)?.value || 255);
+                        const minSize = parseInt(document.getElementById(`${option.prefix}-min-size`)?.value || 200);
+                        const maxSize = parseInt(document.getElementById(`${option.prefix}-max-size`)?.value || 20000);
 
-                        if (area >= minSize && area <= maxSize) {
-                            let rect = cv.boundingRect(contour);
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMin, sMin, vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [hMax, sMax, vMax, 0]);
 
-                            // Sample the center of the detection
-                            const cx = rect.x + Math.floor(rect.width / 2);
-                            const cy = rect.y + Math.floor(rect.height / 2);
+                        let optionMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, optionMask);
 
-                            if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                        lowMat.delete();
+                        highMat.delete();
+
+                        // Properly clean up old contours before creating new ones
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) {
+                                contours.get(i).delete();
+                            }
+                            contours.delete();
+                        }
+                        contours = new cv.MatVector();
+
+                        cv.findContours(optionMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= minSize && area <= maxSize) {
+                                let rect = cv.boundingRect(contour);
+
+                                // Sample the center of the detection
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                let skipDetection = false;
+
+                                if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                                    const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                    const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                    const detVal = hsvMat.ucharPtr(cy, cx)[2];
+
+                                    // Check if color is in exclusion range
+                                    if (exclusionEnabled) {
+                                        let inExclusion = false;
+                                        if (exHMin <= exHMax) {
+                                            inExclusion = (detHue >= exHMin && detHue <= exHMax);
+                                        } else {
+                                            inExclusion = (detHue >= exHMin || detHue <= exHMax);
+                                        }
+                                        inExclusion = inExclusion &&
+                                                     (detSat >= exSMin && detSat <= exSMax) &&
+                                                     (detVal >= exVMin && detVal <= exVMax);
+                                        if (inExclusion) skipDetection = true;
+                                    }
+
+                                    // Check if color is excluded (old system)
+                                    if (isExcludedColor(detHue)) skipDetection = true;
+
+                                    // Smart filter: skip if it looks like terrain
+                                    if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                }
+
+                                if (skipDetection) continue;
+
+                                hsvCount++;
+
+                                let p1 = new cv.Point(rect.x, rect.y);
+                                let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                                cv.rectangle(outputFrame, p1, p2, option.color, 2, cv.LINE_AA, 0);
+
+                                // Add label with hue and area
                                 const detHue = hsvMat.ucharPtr(cy, cx)[0];
                                 const detSat = hsvMat.ucharPtr(cy, cx)[1];
-
-                                // Check if color is excluded
-                                if (isExcludedColor(detHue)) continue;
-
-                                // Smart filter: skip if it looks like terrain
-                                if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
+                                let colorName = getColorName(detHue);
+                                let label = `${option.prefix.toUpperCase()}:${colorName} H${detHue} S${detSat} ${Math.round(area)}px`;
+                                cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
+                                    cv.FONT_HERSHEY_SIMPLEX, 0.4, option.color, 1, cv.LINE_AA);
                             }
-
-                            hsvCount++;
-
-                            let p1 = new cv.Point(rect.x, rect.y);
-                            let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
-                            cv.rectangle(outputFrame, p1, p2, [0, 255, 0, 255], 2, cv.LINE_AA, 0);
-
-                            // Add label with hue and area (cx, cy already declared above)
-                            const detHue = hsvMat.ucharPtr(cy, cx)[0];
-                            const detSat = hsvMat.ucharPtr(cy, cx)[1];
-                            let colorName = getColorName(detHue);
-                            let label = `HSV:${colorName} H${detHue} S${detSat} ${Math.round(area)}px`;
-                            cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
-                                cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 255, 0, 255], 1, cv.LINE_AA);
                         }
+
+                        optionMask.delete();
                     }
                 }
 
