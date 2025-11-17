@@ -106,10 +106,10 @@
                             <span class="text-gray-300">Number of Frames to Analyze</span>
                             <span class="text-orange-300" id="terrain-frames-val">20</span>
                         </div>
-                        <input type="range" id="terrain-frames" min="5" max="50" step="5" value="20" class="w-full">
+                        <input type="range" id="terrain-frames" min="1" max="100" step="5" value="20" class="w-full">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>Faster (5)</span>
-                            <span>More thorough (50)</span>
+                            <span>Faster (1)</span>
+                            <span>More thorough (100)</span>
                         </div>
                     </div>
 
@@ -147,9 +147,9 @@
                             <span class="text-gray-300">Number of Frames to Analyze</span>
                             <span class="text-purple-300" id="global-frames-val">50</span>
                         </div>
-                        <input type="range" id="global-frames" min="10" max="100" step="10" value="50" class="w-full">
+                        <input type="range" id="global-frames" min="1" max="100" step="10" value="50" class="w-full">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>Faster (10)</span>
+                            <span>Faster (1)</span>
                             <span>More thorough (100)</span>
                         </div>
                     </div>
@@ -159,10 +159,10 @@
                             <span class="text-gray-300">Exclusion Threshold (Percentile)</span>
                             <span class="text-purple-300" id="global-threshold-val">90</span>
                         </div>
-                        <input type="range" id="global-threshold" min="50" max="99" step="1" value="90" class="w-full">
+                        <input type="range" id="global-threshold" min="0" max="100" step="1" value="90" class="w-full">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>Exclude common (50%)</span>
-                            <span>Keep rare only (99%)</span>
+                            <span>None (0%)</span>
+                            <span>All (100%)</span>
                         </div>
                     </div>
 
@@ -171,21 +171,31 @@
                             <span class="text-gray-300">Standard Deviations</span>
                             <span class="text-purple-300" id="global-std-val">2.0</span>
                         </div>
-                        <input type="range" id="global-std" min="0.5" max="5.0" step="0.1" value="2.0" class="w-full">
+                        <input type="range" id="global-std" min="0.1" max="10.0" step="0.1" value="2.0" class="w-full">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
-                            <span>More aggressive (0.5)</span>
-                            <span>Less aggressive (5.0)</span>
+                            <span>Tight (0.1)</span>
+                            <span>Wide (10.0)</span>
                         </div>
                     </div>
 
                     <p class="text-xs text-gray-400 mb-3">Analyzes the entire video's HSV color distribution and excludes detections within typical color ranges. Colors that appear frequently throughout the video are considered "normal" and filtered out.</p>
 
+                    <button id="preview-global-btn" class="bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold py-2 px-4 rounded w-full mb-3">
+                        Preview Excluded Colors
+                    </button>
+
                     <div id="global-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden"></div>
+                    <canvas id="global-preview-canvas" class="hidden w-full mt-3 border border-purple-500 rounded"></canvas>
                 </div>
 
                 <!-- DBSCAN Settings -->
                 <div class="bg-indigo-900 bg-opacity-20 p-4 rounded mb-4 border-2 border-indigo-500">
-                    <h3 class="text-lg font-semibold mb-2 text-indigo-400">DBSCAN Clustering</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-semibold text-indigo-400">DBSCAN Clustering</h3>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="use-dbscan" class="w-5 h-5">
+                            <span class="text-indigo-300 font-semibold">Enable DBSCAN Detection</span>
+                    </div>
                     <p class="text-xs text-gray-400 mb-3">Uses density-based clustering to identify anomalous color patterns in the video</p>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
@@ -213,7 +223,12 @@
                         </div>
                     </div>
 
-                    <div id="dbscan-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden"></div>
+                    <div id="dbscan-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden">
+                        <button id="preview-dbscan-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold py-2 px-4 rounded w-full mb-3">
+                        Preview DBSCAN Clusters
+                    </button>
+                    <canvas id="dbscan-preview-canvas" class="hidden w-full h-48 mt-3 border border-indigo-500 rounded"></canvas>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
@@ -583,15 +598,9 @@
                         <input type="number" id="frame-sample-rate" min="1" max="120" value="10" placeholder="e.g., 10" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none">
                     </div>
                     <div class="col-span-2">
-                        <div class="flex items-center gap-2 mb-2">
-                            <button id="quick-analyze-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                                Quick Analyze
-                            </button>
-                            <label class="flex items-center space-x-2 cursor-pointer text-sm">
-                                <input type="checkbox" id="use-dbscan" class="w-4 h-4">
-                                <span class="text-gray-300">Use DBSCAN clustering</span>
-                            </label>
-                        </div>
+                        <button id="quick-analyze-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors mb-2">
+                            Quick Analyze
+                        </button>
                         <p class="text-xs text-gray-400 mb-2">Samples video frames to auto-configure optimal detection settings based on color anomalies</p>
                         <button id="batch-process-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded w-full transition-colors">
                             Process All Frames
@@ -608,6 +617,7 @@
                         <div><strong>Hue Range:</strong> <span id="ind-hue-range">100-130</span></div>
                         <div><strong>Sat Range:</strong> <span id="ind-sat-range">150-255</span></div>
                         <div><strong>Smart Filter:</strong> <span id="ind-smart-filter">Off</span></div>
+                        <div><strong>Global Filter:</strong> <span id="ind-global-filter">Off</span></div>
                         <div><strong>Size Range:</strong> <span id="ind-size-range">200-20000px</span></div>
                         <div><strong>Exclusion Source:</strong> <span id="ind-exclusion-source">None</span></div>
                         <div><strong>DBSCAN:</strong> <span id="ind-dbscan">Off</span></div>
@@ -663,12 +673,13 @@
         </main>
     </div>
 
-    <script>
+ <script>
         let video;
         let videoStream;
         let cap;
         let srcMat, rgbMat, hsvMat, maskMat, contours, hierarchy;
         let isProcessing = false;
+        let dbscanAnomalyTargets = [];
         let fps = 30;
         let elapsed;
         let then;
@@ -690,6 +701,9 @@
         let colorAnalysisData = null;
         let activePresetButton = null;
         let excludedColorRanges = []; // Array of {min, max} hue ranges to exclude
+        
+        // --- NEW ---
+        let dbscanPreviewData = null; // Holds data for the cluster preview
 
         function initMatsIfReady() {
             if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -888,7 +902,29 @@
             
             document.getElementById('global-std').addEventListener('input', (e) => {
                 document.getElementById('global-std-val').textContent = e.target.value;
+                if (globalHsvDistribution) updateGlobalPreview();
             });
+            
+            document.getElementById('global-threshold').addEventListener('input', (e) => {
+                document.getElementById('global-threshold-val').textContent = e.target.value;
+                if (globalHsvDistribution) updateGlobalPreview();
+            });
+            
+            document.getElementById('preview-global-btn').addEventListener('click', () => {
+                if (!globalHsvDistribution) {
+                    alert('Please run "Analyze Video" first to build the distribution.');
+                    return;
+                }
+                updateGlobalPreview();
+            });
+
+            // --- NEW ---
+            // Add listener for the new DBSCAN preview button
+            const previewDbscanBtn = document.getElementById('preview-dbscan-btn');
+            if (previewDbscanBtn) {
+                previewDbscanBtn.addEventListener('click', drawDbscanPreview);
+            }
+            // --- END NEW ---
             
             // Simple modal like Python script
             const canvas = document.getElementById('canvas-out');
@@ -1146,6 +1182,7 @@
             document.getElementById('enable-hsv').addEventListener('change', updateSettingsIndicator);
             document.getElementById('enable-sat').addEventListener('change', updateSettingsIndicator);
             document.getElementById('enable-smart-filter').addEventListener('change', updateSettingsIndicator);
+            document.getElementById('enable-global-filter').addEventListener('change', updateSettingsIndicator);
             ['hsv-min-size', 'hsv-max-size'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('input', updateSettingsIndicator);
@@ -1269,7 +1306,11 @@
                                 const sat = hsvMat.ucharPtr(y, x)[1];
                                 const val = hsvMat.ucharPtr(y, x)[2];
 
-                                if (val > 30 && val < 230) {
+                                // --- FIX ---
+                                // Only analyze pixels that are somewhat saturated (not grey/brown)
+                                // and not too dark/bright
+                                if (val > 40 && val < 240 && sat > 40) {
+                                // --- END FIX ---
                                     allHues[hue] = (allHues[hue] || 0) + 1;
                                     allSats.push(sat);
                                 }
@@ -1293,82 +1334,104 @@
         }
 
         function performDbscanAnalysis() {
-            const savedTime = video.currentTime;
-            isSeekingSuppressed = true;
+                    const savedTime = video.currentTime;
+                    isSeekingSuppressed = true;
 
-            // Mark that DBSCAN was used
-            window.dbscanUsed = true;
+                    // Mark that DBSCAN was used
+                    window.dbscanUsed = true;
+                    // --- NEW ---
+                    dbscanPreviewData = null; // Clear old preview data
+                    document.getElementById('dbscan-preview-canvas').classList.add('hidden'); // Hide old preview
+                    // --- END NEW ---
 
-            const duration = video.duration;
-            const sampleFrames = 10; // Reduced from 20 for faster processing
-            const frameStep = duration / sampleFrames;
+                    const duration = video.duration;
+                    const sampleFrames = 10; // 10 frames is fine
+                    const frameStep = duration / sampleFrames;
 
-            let allPixels = [];
-            let frameIndex = 0;
+                    let allPixels = [];
+                    let frameIndex = 0;
 
-            function sampleNext() {
-                if (frameIndex >= sampleFrames) {
-                    isSeekingSuppressed = false;
-                    video.currentTime = savedTime;
+                    function sampleNext() {
+                        if (frameIndex >= sampleFrames) {
+                            isSeekingSuppressed = false;
+                            video.currentTime = savedTime;
 
-                    // Limit pixel count for DBSCAN performance
-                    const maxPixels = 500;
-                    if (allPixels.length > maxPixels) {
-                        // Randomly sample pixels
-                        allPixels = allPixels.sort(() => 0.5 - Math.random()).slice(0, maxPixels);
-                    }
-
-                    updateStatus(`Running DBSCAN on ${allPixels.length} pixels...`, "text-indigo-400");
-
-                    // Get DBSCAN parameters from sliders
-                    const eps = parseInt(document.getElementById('dbscan-eps').value) || 15;
-                    const minPts = parseInt(document.getElementById('dbscan-minpts').value) || 5;
-
-                    // Perform DBSCAN clustering
-                    const clusters = dbscan(allPixels, eps, minPts);
-                    configureDbscanDetection(clusters, allPixels);
-                    return;
-                }
-
-                const onSeekedHandler = () => {
-                    video.removeEventListener('seeked', onSeekedHandler);
-
-                    try {
-                        cap.read(srcMat);
-                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
-                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
-
-                        const h = hsvMat.rows;
-                        const w = hsvMat.cols;
-                        const step = 50; // Increased step for fewer samples
-
-                        for (let y = 0; y < h; y += step) {
-                            for (let x = 0; x < w; x += step) {
-                                const hue = hsvMat.ucharPtr(y, x)[0];
-                                const sat = hsvMat.ucharPtr(y, x)[1];
-                                const val = hsvMat.ucharPtr(y, x)[2];
-
-                                if (val > 30 && val < 230 && sat > 50) {
-                                    allPixels.push({hue, sat, val});
-                                }
+                            // Limit pixel count for DBSCAN performance
+                            // *** FIX: Increased pixel limit for better sampling ***
+                            const maxPixels = 5000; // Was 500
+                            if (allPixels.length > maxPixels) {
+                                // Randomly sample pixels
+                                allPixels = allPixels.sort(() => 0.5 - Math.random()).slice(0, maxPixels);
                             }
+                            
+                            if (allPixels.length < 50) {
+                                updateStatus(`DBSCAN Error: Not enough vivid pixels found to analyze. Try lowering S/V in HSV Options.`, "text-red-400");
+                                isSeekingSuppressed = false;
+                                video.currentTime = savedTime;
+                                return;
+                            }
+
+                            updateStatus(`Running DBSCAN on ${allPixels.length} pixels...`, "text-indigo-400");
+
+                            // Get DBSCAN parameters from sliders
+                            const eps = parseInt(document.getElementById('dbscan-eps').value) || 15;
+                            const minPts = parseInt(document.getElementById('dbscan-minpts').value) || 5;
+
+                            // Perform DBSCAN clustering
+                            const clusters = dbscan(allPixels, eps, minPts);
+                            
+                            // --- NEW ---
+                            // Save data for preview
+                            dbscanPreviewData = { pixels: allPixels, labels: clusters.labels, numClusters: clusters.numClusters };
+                            // --- END NEW ---
+                            
+                            configureDbscanDetection(clusters, allPixels);
+                            return;
                         }
 
-                        frameIndex++;
-                        setTimeout(sampleNext, 50);
-                    } catch (err) {
-                        console.error("Error:", err);
-                        isSeekingSuppressed = false;
-                        video.currentTime = savedTime;
+                        const onSeekedHandler = () => {
+                            video.removeEventListener('seeked', onSeekedHandler);
+
+                            try {
+                                cap.read(srcMat);
+                                cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                                cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                                const h = hsvMat.rows;
+                                const w = hsvMat.cols;
+                                
+                                // *** FIX: Denser sampling step ***
+                                const step = 30; // Was 50
+
+                                for (let y = 0; y < h; y += step) {
+                                    for (let x = 0; x < w; x += step) {
+                                        const hue = hsvMat.ucharPtr(y, x)[0];
+                                        const sat = hsvMat.ucharPtr(y, x)[1];
+                                        const val = hsvMat.ucharPtr(y, x)[2];
+
+                                        // *** FIX: Stronger filter to find VIVID anomalies ***
+                                        // Only sample pixels that are not dull
+                                        if (val > 50 && val < 240 && sat > 70) { // Was val>30, val<230, sat>50
+                                            allPixels.push({hue, sat, val});
+                                        }
+                                    }
+                                }
+
+                                frameIndex++;
+                                setTimeout(sampleNext, 50);
+                            } catch (err) {
+                                console.error("Error:", err);
+                                isSeekingSuppressed = false;
+                                video.currentTime = savedTime;
+                            }
+                        };
+
+                        video.addEventListener('seeked', onSeekedHandler, { once: true });
+                        video.currentTime = Math.min(frameIndex * frameStep, duration - 0.1);
                     }
-                };
 
-                video.addEventListener('seeked', onSeekedHandler, { once: true });
-                video.currentTime = Math.min(frameIndex * frameStep, duration - 0.1);
-            }
-
-            sampleNext();
-        }
+                    sampleNext();
+                }
 
         function dbscan(points, eps, minPts) {
             const labels = new Array(points.length).fill(-1);
@@ -1429,6 +1492,7 @@
             return { labels, numClusters: clusterId };
         }
 
+        // --- REVERTED/FIXED FUNCTION ---
         function configureDbscanDetection(clusters, pixels) {
             // Find anomalous clusters (smaller clusters are likely anomalies)
             const clusterSizes = {};
@@ -1452,62 +1516,85 @@
             });
 
             // Find smallest clusters (anomalies)
+            // --- FIX: Sort by SMALLEST first (a[1] - b[1]) ---
             const sortedClusters = Object.entries(clusterSizes).sort((a, b) => a[1] - b[1]);
+            
+            // Clear previous targets
+            dbscanAnomalyTargets = [];
+            
             if (sortedClusters.length === 0) {
-                updateStatus("No distinct color clusters found. Using default settings.", "text-yellow-400");
+                updateStatus("No distinct color clusters found.", "text-yellow-400");
+                document.getElementById('dbscan-info').classList.remove('hidden');
+                document.getElementById('dbscan-info').innerHTML = `<strong class="text-red-400">✗ DBSCAN Analysis Failed</strong><br>No clusters found.`;
                 return;
             }
 
-            // Use the smallest cluster as the anomaly target
-            const anomalyCluster = sortedClusters[0][0];
-            const stats = clusterStats[anomalyCluster];
+            // Get DBSCAN parameters from sliders
+            const eps = parseInt(document.getElementById('dbscan-eps').value) || 15;
+            // Use HSV1's size as a default for the new targets
+            const minSize = parseInt(document.getElementById('hsv1-min-size').value) || 200;
+            const maxSize = parseInt(document.getElementById('hsv1-max-size').value) || 20000;
 
-            const avgHue = stats.hues.reduce((a, b) => a + b, 0) / stats.hues.length;
-            const avgSat = stats.sats.reduce((a, b) => a + b, 0) / stats.sats.length;
+            // Use the smallest 3 clusters as the anomaly targets
+            const numTargets = Math.min(sortedClusters.length, 3);
+            let infoHtml = `<strong class="text-indigo-400">✓ DBSCAN Analysis Complete</strong><br>Found ${clusters.numClusters} clusters. Targeting ${numTargets} smallest (anomalies):<div class="pl-2 mt-1">`;
 
-            // Configure HSV ranges around the anomaly cluster
-            const hueRange = 15;
-            const satRange = 30;
+            for (let i = 0; i < numTargets; i++) {
+                // --- FIX: Take from the start of the list (smallest) ---
+                const anomalyClusterId = sortedClusters[i][0];
+                const stats = clusterStats[anomalyClusterId];
 
-            document.getElementById('hsv1-h-min').value = Math.max(0, Math.floor(avgHue - hueRange));
-            document.getElementById('hsv1-h-max').value = Math.min(179, Math.ceil(avgHue + hueRange));
-            document.getElementById('hsv1-s-min').value = Math.max(0, Math.floor(avgSat - satRange));
-            document.getElementById('hsv1-s-max').value = Math.min(255, Math.ceil(avgSat + satRange));
+                const avgHue = stats.hues.reduce((a, b) => a + b, 0) / stats.hues.length;
+                const avgSat = stats.sats.reduce((a, b) => a + b, 0) / stats.sats.length;
+                const avgVal = stats.vals.reduce((a, b) => a + b, 0) / stats.vals.length;
 
-            // Trigger update events
-            document.getElementById('hsv1-h-min').dispatchEvent(new Event('input'));
-            document.getElementById('hsv1-h-max').dispatchEvent(new Event('input'));
-            document.getElementById('hsv1-s-min').dispatchEvent(new Event('input'));
-            document.getElementById('hsv1-s-max').dispatchEvent(new Event('input'));
+                // Configure HSV ranges around the anomaly cluster
+                const hueRange = eps; // Use Epsilon as the range
+                const satRange = eps * 1.5; // Sat range can be a bit wider
+                const valRange = 40; // Value range
 
-            // Enable HSV detection
-            document.getElementById('enable-hsv').checked = true;
-            document.getElementById('hsv1-enabled').checked = true;
+                const target = {
+                    hMin: Math.max(0, Math.floor(avgHue - hueRange)),
+                    hMax: Math.min(179, Math.ceil(avgHue + hueRange)),
+                    sMin: Math.max(0, Math.floor(avgSat - satRange)),
+                    sMax: Math.min(255, Math.ceil(avgSat + satRange)),
+                    vMin: Math.max(50, Math.floor(avgVal - valRange)), // Ignore dark values
+                    vMax: Math.min(255, Math.ceil(avgVal + valRange)),
+                    minSize: minSize,
+                    maxSize: maxSize,
+                    label: `DBSCAN ${i+1} (H:${avgHue.toFixed(0)}, S:${avgSat.toFixed(0)})`
+                };
+                
+                // Handle Hue wraparound for red
+                if (avgHue < hueRange) { // e.g., avgHue 5, eps 15 -> 0-20
+                    target.hMin = 0;
+                    target.hMax = Math.ceil(avgHue + hueRange);
+                    // Add the other side of red
+                    dbscanAnomalyTargets.push({ ...target, hMin: Math.floor(179 - (hueRange - avgHue)), hMax: 179, label: target.label + " (wrap)" });
+                } else if (avgHue > (179 - hueRange)) { // e.g., avgHue 175, eps 15 -> 160-179
+                    target.hMin = Math.floor(avgHue - hueRange);
+                    target.hMax = 179;
+                    // Add the other side of red
+                    dbscanAnomalyTargets.push({ ...target, hMin: 0, hMax: Math.ceil((hueRange - (179 - avgHue))), label: target.label + " (wrap)" });
+                }
+                
+                dbscanAnomalyTargets.push(target);
 
-            updateStatus(`DBSCAN: Found ${clusters.numClusters} clusters. Configured for smallest cluster (likely anomaly).`, "text-green-400");
+                infoHtml += `<strong>• Target ${i+1}:</strong> H:${target.hMin}-${target.hMax}, S:${target.sMin}-${target.sMax}<br>`;
+            }
+
+            infoHtml += `</div><em class="text-indigo-300">Detection enabled. Toggle "Enable DBSCAN Detection" checkbox to use.</em>`;
 
             // Show DBSCAN info
             document.getElementById('dbscan-info').classList.remove('hidden');
-            document.getElementById('dbscan-info').innerHTML = `
-                <strong class="text-indigo-400">✓ DBSCAN Analysis Complete</strong><br>
-                <div class="pl-2 mt-1">
-                <strong>Cluster Statistics:</strong><br>
-                • Found ${clusters.numClusters} color clusters<br>
-                • Target cluster (anomaly): ${clusterSizes[anomalyCluster]} pixels<br>
-                • Average Hue: ${avgHue.toFixed(0)}, Average Sat: ${avgSat.toFixed(0)}<br>
-                • Configured HSV range: H=${Math.floor(avgHue - hueRange)}-${Math.ceil(avgHue + hueRange)}, S=${Math.floor(avgSat - satRange)}-${Math.ceil(avgSat + satRange)}<br>
-                <em class="text-indigo-300">HSV detection configured to target the smallest cluster</em>
-                </div>
-            `;
+            document.getElementById('dbscan-info').innerHTML = infoHtml;
 
-            // Also show in smart settings info for backward compatibility
-            document.getElementById('smart-settings-info').classList.remove('hidden');
-            document.getElementById('smart-settings-text').innerHTML = `
-                DBSCAN Analysis Complete:<br>
-                - Found ${clusters.numClusters} color clusters<br>
-                - Target cluster size: ${clusterSizes[anomalyCluster]} pixels<br>
-                - Configured HSV range: H=${Math.floor(avgHue - hueRange)}-${Math.ceil(avgHue + hueRange)}, S=${Math.floor(avgSat - satRange)}-${Math.ceil(avgSat + satRange)}
-            `;
+            // DO NOT set HSV sliders
+            
+            updateStatus(`DBSCAN: Configured ${numTargets} anomaly targets. Enable checkbox to use.`, "text-green-400");
+            
+            // Enable the checkbox for the user
+            document.getElementById('use-dbscan').checked = true;
 
             // Update settings indicator and reprocess current frame
             updateSettingsIndicator();
@@ -1515,6 +1602,7 @@
                 processSingleFrame();
             }
         }
+        // --- END REVERTED/FIXED FUNCTION ---
 
         function configureSmartDetection(hueData, satData) {
             // Find outlier hues (statistical anomalies)
@@ -2179,6 +2267,10 @@
             document.getElementById('ind-smart-filter').textContent = smartFilter ? 'On' : 'Off';
             document.getElementById('ind-smart-filter').className = smartFilter ? 'text-orange-400' : 'text-gray-500';
 
+            const globalFilter = document.getElementById('enable-global-filter').checked;
+            document.getElementById('ind-global-filter').textContent = globalFilter ? 'On' : 'Off';
+            document.getElementById('ind-global-filter').className = globalFilter ? 'text-purple-400' : 'text-gray-500';
+
             // Show size range for HSV1 as a reference
             const sizeRangeEl = document.getElementById('ind-size-range');
             if (sizeRangeEl) {
@@ -2357,6 +2449,7 @@
             return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
         }
 
+        // --- FIXED FUNCTION ---
         function batchProcessVideo() {
             if (!video || !video.videoWidth) {
                 alert('Please load a video first');
@@ -2369,15 +2462,21 @@
             }
 
             const detectionMode = document.getElementById('detection-mode').value;
+            const smartSettingsVisible = !document.getElementById('smart-settings-info').classList.contains('hidden');
+            const dbscanSettingsVisible = !document.getElementById('dbscan-info').classList.contains('hidden');
 
-            // If smart mode and not configured yet, run quick analyze first
-            if (detectionMode === 'smart' && document.getElementById('smart-settings-info').classList.contains('hidden')) {
+            // If smart mode and NEITHER analysis has been run, run quick analyze first
+            if (detectionMode === 'smart' && !smartSettingsVisible && !dbscanSettingsVisible) {
                 updateStatus("Running smart analysis before batch processing...", "text-indigo-400");
                 quickAnalyzeAndConfigure();
 
                 // Wait for analysis to complete, then start batch
                 const checkInterval = setInterval(() => {
-                    if (!document.getElementById('smart-settings-info').classList.contains('hidden')) {
+                    // Check if EITHER setting block is now visible
+                    const newSmartVisible = !document.getElementById('smart-settings-info').classList.contains('hidden');
+                    const newDbscanVisible = !document.getElementById('dbscan-info').classList.contains('hidden');
+                    
+                    if (newSmartVisible || newDbscanVisible) {
                         clearInterval(checkInterval);
                         setTimeout(() => startBatchProcessing(), 1000);
                     }
@@ -2387,6 +2486,7 @@
 
             startBatchProcessing();
         }
+        // --- END FIXED FUNCTION ---
 
         function startBatchProcessing() {
             const sampleRate = parseInt(document.getElementById('frame-sample-rate').value);
@@ -2396,9 +2496,10 @@
 
             const enableHsv = document.getElementById('enable-hsv').checked;
             const enableSat = document.getElementById('enable-sat').checked;
+            const enableDbscan = document.getElementById('use-dbscan').checked;
 
-            if (!enableHsv && !enableSat) {
-                alert('Please enable at least one detection method (HSV Color Range or High Saturation)');
+            if (!enableHsv && !enableSat && !enableDbscan) {
+                alert('Please enable at least one detection method (HSV, High Saturation, or DBSCAN)');
                 return;
             }
 
@@ -2452,9 +2553,51 @@
 
                             dets.forEach((det, i) => {
                                 console.log(`  Det ${i}: ${det.type} at (${det.rect.x},${det.rect.y}) size ${det.rect.width}x${det.rect.height}`);
+                                
+                                let color = [0, 255, 0, 255]; // Default green
+                                if (det.type === 'Sat') {
+                                    color = [255, 0, 255, 255]; // Magenta
+                                } else if (det.type === 'DBSCAN') {
+                                    color = [0, 191, 255, 255]; // Deep Sky Blue
+                                }
 
                                 // Handle HSV1, HSV2, HSV3, or just HSV
-                                if (det.type && det.type.startsWith('HSV')) {
+                            //     if (det.type && det.type.startsWith('HSV')) {
+                            //         cv.rectangle(displayMat,
+                            //             new cv.Point(det.rect.x, det.rect.y),
+                            //             new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                            //             [0, 255, 0, 255], 2, cv.LINE_AA, 0);
+
+                            //         // Add label with detection details
+                            //         const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                            //         cv.putText(displayMat, label,
+                            //             new cv.Point(det.rect.x, det.rect.y - 5),
+                            //             cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 255, 0, 255], 1, cv.LINE_AA);
+                            //     } else if (det.type === 'Sat') {
+                            //         cv.rectangle(displayMat,
+                            //             new cv.Point(det.rect.x, det.rect.y),
+                            //             new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                            //             [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+
+                            //         // Add label with detection details
+                            //         const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                            //         cv.putText(displayMat, label,
+                            //             new cv.Point(det.rect.x, det.rect.y - 5),
+                            //             cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
+                            //     } else if (det.type === 'DBSCAN') {
+                            //          cv.rectangle(displayMat,
+                            //             new cv.Point(det.rect.x, det.rect.y),
+                            //             new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                            //             [0, 191, 255, 255], 2, cv.LINE_AA, 0);
+
+                            //         // Add label with detection details
+                            //         const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                            //         cv.putText(displayMat, label,
+                            //             new cv.Point(det.rect.x, det.rect.y - 5),
+                            //             cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 191, 255, 255], 1, cv.LINE_AA);
+                            //     }
+                            // });
+                            if (det.type && det.type.startsWith('HSV')) {
                                     cv.rectangle(displayMat,
                                         new cv.Point(det.rect.x, det.rect.y),
                                         new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
@@ -2476,6 +2619,17 @@
                                     cv.putText(displayMat, label,
                                         new cv.Point(det.rect.x, det.rect.y - 5),
                                         cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
+                                } else if (det.type === 'DBSCAN') {
+                                    cv.rectangle(displayMat,
+                                        new cv.Point(det.rect.x, det.rect.y),
+                                        new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                                        [0, 191, 255, 255], 2, cv.LINE_AA, 0); // Deep Sky Blue
+
+                                    // Add label with detection details
+                                    const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                                    cv.putText(displayMat, label,
+                                        new cv.Point(det.rect.x, det.rect.y - 5),
+                                        cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 191, 255, 255], 1, cv.LINE_AA);
                                 }
                             });
 
@@ -2681,6 +2835,64 @@
 
                     satMask.delete();
                 }
+                // DBSCAN Detection
+                if (document.getElementById('use-dbscan').checked && window.dbscanAnomalyTargets && window.dbscanAnomalyTargets.length > 0) {
+                    
+                    for (const target of window.dbscanAnomalyTargets) {
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [target.hMin, target.sMin, target.vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [target.hMax, target.sMax, target.vMax, 0]);
+
+                        let dbscanMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, dbscanMask);
+                        
+                        lowMat.delete();
+                        highMat.delete();
+
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
+                            contours.delete();
+                        }
+                        contours = new cv.MatVector();
+
+                        cv.findContours(dbscanMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= target.minSize && area <= target.maxSize) {
+                                let rect = cv.boundingRect(contour);
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                let skipDetection = false;
+                                if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                                    const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                    const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                    const detVal = hsvMat.ucharPtr(cy, cx)[2];
+                                    
+                                    // Smart filter check
+                                    if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                    
+                                    // Global filter check
+                                    if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) skipDetection = true;
+                                }
+
+                                if (skipDetection) continue;
+
+                                // Add detection
+                                detections.push({
+                                    type: 'DBSCAN',
+                                    desc: target.label,
+                                    area: Math.round(area),
+                                    rect: rect
+                                });
+                            }
+                        }
+                        dbscanMask.delete();
+                    }
+                }
+
             } catch (err) {
                 console.error("Detection error:", err);
             }
@@ -2835,7 +3047,14 @@
             detections.forEach(det => {
                 const detLine = document.createElement('div');
                 detLine.className = 'text-xs';
-                const colorClass = det.type.startsWith('HSV') ? 'text-green-400' : 'text-purple-400';
+                
+                let colorClass = 'text-green-400';
+                if (det.type === 'Sat') {
+                    colorClass = 'text-purple-400';
+                } else if (det.type === 'DBSCAN') {
+                    colorClass = 'text-indigo-400';
+                }
+                
                 detLine.innerHTML = `<span class="${colorClass}">${det.type}:</span> ${det.desc} <span class="text-gray-500">(${det.area}px)</span>`;
                 listDiv.appendChild(detLine);
             });
@@ -3160,6 +3379,70 @@
             sampleNextFrame();
         }
         
+        
+        function updateGlobalPreview() {
+            const canvas = document.getElementById('global-preview-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = 360;
+            canvas.height = 256;
+            canvas.classList.remove('hidden');
+            
+            const dist = globalHsvDistribution;
+            const stdDevs = parseFloat(document.getElementById('global-std').value) || 2.0;
+            
+            // Draw all HSV colors
+            for (let h = 0; h < 180; h++) {
+                for (let s = 0; s < 256; s++) {
+                    const hueInRange = Math.abs(h - dist.hueMean) <= (stdDevs * dist.hueStd);
+                    const satInRange = Math.abs(s - dist.satMean) <= (stdDevs * dist.satStd);
+                    
+                    const hueInPercentile = h >= dist.hueMin && h <= dist.hueMax;
+                    const satInPercentile = s >= dist.satMin && s <= dist.satMax;
+                    
+                    const isExcluded = (hueInRange && satInRange) || (hueInPercentile && satInPercentile);
+                    
+                    // Convert HSV to RGB for display
+                    const rgb = hsvToRgb(h, s, 200);
+                    
+                    if (isExcluded) {
+                        // Dim excluded colors
+                        ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.2)`;
+                    } else {
+                        // Bright for included colors
+                        ctx.fillStyle = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+                    }
+                    
+                    ctx.fillRect(h * 2, s, 2, 1);
+                }
+            }
+            
+            // Draw distribution boundaries
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(dist.hueMin * 2, dist.satMin, (dist.hueMax - dist.hueMin) * 2, dist.satMax - dist.satMin);
+        }
+        
+        function hsvToRgb(h, s, v) {
+            h = h * 2; // OpenCV uses 0-180, convert to 0-360
+            s = s / 255;
+            v = v / 255;
+            
+            const c = v * s;
+            const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+            const m = v - c;
+            
+            let r, g, b;
+            if (h < 60) { r = c; g = x; b = 0; }
+            else if (h < 120) { r = x; g = c; b = 0; }
+            else if (h < 180) { r = 0; g = c; b = x; }
+            else if (h < 240) { r = 0; g = x; b = c; }
+            else if (h < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            
+            return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+        }
+        
         function isTypicalColor(hue, sat, val) {
             if (!globalHsvDistribution) return false;
             
@@ -3239,7 +3522,7 @@
             // At strength 1.5: moderate filtering
             // At strength 0.5: very aggressive (only extreme outliers pass)
             // At strength 3.0: very lenient (more detections pass)
-            return (hueInRange && satInRange) || (hueInP25P75 && satInP25P75);
+            return (hueInRange && satInRange) || (hueInP25P75 && satInP25P7Saturated);
         }
 
         function processSingleFrame() {
@@ -3272,6 +3555,7 @@
 
                 let hsvCount = 0;
                 let satCount = 0;
+                let currentDetections = []; // For the list below the canvas
 
                 let outputFrame = srcMat.clone();
 
@@ -3366,6 +3650,12 @@
                                 let label = `${option.prefix.toUpperCase()}:${colorName} H${detHue} S${detSat} ${Math.round(area)}px`;
                                 cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
                                     cv.FONT_HERSHEY_SIMPLEX, 0.4, option.color, 1, cv.LINE_AA);
+                                    
+                                currentDetections.push({
+                                    type: option.prefix.toUpperCase(),
+                                    desc: `${colorName} H${detHue} S${detSat}`,
+                                    area: Math.round(area)
+                                });
                             }
                         }
 
@@ -3440,14 +3730,88 @@
                             let label = `SAT:${detSat} ${Math.round(area)}px`;
                             cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
                                 cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
+                                
+                            currentDetections.push({
+                                type: 'Sat',
+                                desc: `S${detSat}`,
+                                area: Math.round(area)
+                            });
                         }
                     }
                     
                     satMask.delete();
                 }
+                // DBSCAN Detection
+                if (document.getElementById('use-dbscan').checked && window.dbscanAnomalyTargets && window.dbscanAnomalyTargets.length > 0) {
+                    
+                    for (const target of window.dbscanAnomalyTargets) {
+                        let lowMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [target.hMin, target.sMin, target.vMin, 0]);
+                        let highMat = new cv.Mat(hsvMat.rows, hsvMat.cols, hsvMat.type(), [target.hMax, target.sMax, target.vMax, 0]);
+
+                        let dbscanMask = new cv.Mat();
+                        cv.inRange(hsvMat, lowMat, highMat, dbscanMask);
+                        
+                        lowMat.delete();
+                        highMat.delete();
+
+                        if (contours) {
+                            for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
+                            contours.delete();
+                        }
+                        contours = new cv.MatVector();
+
+                        cv.findContours(dbscanMask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+
+                        for (let i = 0; i < contours.size(); ++i) {
+                            const contour = contours.get(i);
+                            const area = cv.contourArea(contour, false);
+
+                            if (area >= target.minSize && area <= target.maxSize) {
+                                let rect = cv.boundingRect(contour);
+                                const cx = rect.x + Math.floor(rect.width / 2);
+                                const cy = rect.y + Math.floor(rect.height / 2);
+
+                                let skipDetection = false;
+                                if (cx < hsvMat.cols && cy < hsvMat.rows) {
+                                    const detHue = hsvMat.ucharPtr(cy, cx)[0];
+                                    const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                    const detVal = hsvMat.ucharPtr(cy, cx)[2];
+                                    
+                                    // Smart filter check
+                                    if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                    
+                                    // Global filter check
+                                    if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) skipDetection = true;
+                                }
+
+                                if (skipDetection) continue;
+
+                                // Draw detection (Deep Sky Blue color)
+                                let p1 = new cv.Point(rect.x, rect.y);
+                                let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                                cv.rectangle(outputFrame, p1, p2, [0, 191, 255, 255], 2, cv.LINE_AA, 0);
+
+                                // Add label
+                                let label = `${target.label} ${Math.round(area)}px`;
+                                cv.putText(outputFrame, label, new cv.Point(rect.x, rect.y - 5),
+                                    cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 191, 255, 255], 1, cv.LINE_AA);
+                                    
+                                currentDetections.push({
+                                    type: 'DBSCAN',
+                                    desc: target.label,
+                                    area: Math.round(area)
+                                });
+                            }
+                        }
+                        dbscanMask.delete();
+                    }
+                }
 
                 cv.imshow('canvas-out', outputFrame);
                 outputFrame.delete();
+                
+                // Update the list below the canvas
+                updateCurrentFrameDetections(currentDetections);
 
             } catch (err) {
                 console.error("OpenCV processing error:", err);
@@ -3502,6 +3866,75 @@
             statusEl.textContent = `Status: ${message}`;
             statusEl.className = `mb-4 ${colorClass}`;
         }
+        
+        // --- NEW FUNCTION ---
+        function drawDbscanPreview() {
+            if (!dbscanPreviewData) {
+                alert('Please run "Quick Analyze" with DBSCAN enabled first.');
+                return;
+            }
+
+            const canvas = document.getElementById('dbscan-preview-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            canvas.width = 360; // Hue (0-179 * 2)
+            canvas.height = 256; // Saturation (0-255)
+            canvas.classList.remove('hidden');
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1f2937'; // bg-gray-800
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const { pixels, labels, numClusters } = dbscanPreviewData;
+
+            // Generate some distinct colors for clusters
+            const clusterColors = [
+                '#34d399', // Emerald 500
+                '#f87171', // Red 500
+                '#60a5fa', // Blue 500
+                '#facc15', // Yellow 500
+                '#38bdf8', // Cyan 500
+                '#c084fc', // Purple 500
+                '#fb923c', // Orange 500
+            ];
+
+            // First, draw noise pixels
+            ctx.fillStyle = 'rgba(107, 114, 128, 0.2)'; // gray-500 with alpha
+            for (let i = 0; i < pixels.length; i++) {
+                if (labels[i] === -1) {
+                    const x = pixels[i].hue * 2;
+                    const y = 255 - pixels[i].sat; // Invert Y so high-sat is at the top
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            
+            // Then, draw clustered pixels
+            for (let i = 0; i < pixels.length; i++) {
+                const label = labels[i];
+                if (label !== -1) {
+                    const x = pixels[i].hue * 2;
+                    const y = 255 - pixels[i].sat; // Invert Y so high-sat is at the top
+                    
+                    ctx.fillStyle = clusterColors[label % clusterColors.length];
+                    ctx.fillRect(x, y, 2, 2);
+                }
+            }
+            
+            // Add labels
+            ctx.fillStyle = '#d1d5db'; // gray-300
+            ctx.font = '10px sans-serif';
+            ctx.fillText('Hue (0-179)', canvas.width / 2 - 20, canvas.height - 5);
+            ctx.save();
+            ctx.translate(10, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Saturation (0-255)', -40, 0);
+            ctx.restore();
+
+            updateStatus(`DBSCAN Preview: ${numClusters} clusters found.`, "text-indigo-400");
+        }
+        // --- END NEW FUNCTION ---
     </script>
+
 </body>
 </html>
