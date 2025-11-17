@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAR Color-Range Finder</title>
+    <title></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
     <style>
@@ -49,8 +49,8 @@
         </div>
         
         <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-sky-400">SAR Color-Range Finder</h1>
-            <p class="text-gray-400">Fast terrain anomaly detection</p>
+            <h1 class="text-3xl font-bold text-sky-400"></h1>
+            <p class="text-gray-400"></p>
         </header>
 
         <div id="loader" class="text-center p-8">
@@ -74,6 +74,13 @@
                             hover:file:bg-sky-700
                             file:cursor-pointer
                         ">
+                        <div id="video-info" class="mt-3 p-3 bg-gray-700 rounded hidden">
+                            <div class="text-xs text-gray-300 space-y-1">
+                                <div><strong>Duration:</strong> <span id="video-duration">-</span></div>
+                                <div><strong>Total Frames:</strong> <span id="video-frames">-</span></div>
+                                <div><strong>FPS:</strong> <span id="video-fps">-</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -81,47 +88,141 @@
             <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6">
                 <h2 class="text-xl font-semibold mb-2">Detection Methods</h2>
                 <p class="text-sm text-gray-400 mb-4">Enable multiple methods for comprehensive detection</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="enable-hsv" class="w-5 h-5">
-                        <span class="text-green-400">HSV Color Range</span>
-                    </label>
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="enable-sat" class="w-5 h-5">
-                        <span class="text-purple-400">High Saturation</span>
-                    </label>
-                </div>
-                
-                <div class="bg-gray-700 p-3 rounded mb-4">
-                    <div class="flex items-center justify-between mb-2">
+
+                <!-- Smart Terrain Filter -->
+                <div class="bg-orange-900 bg-opacity-20 p-4 rounded mb-4 border-2 border-orange-500">
+                    <div class="flex items-center justify-between mb-3">
                         <label class="flex items-center space-x-2 cursor-pointer">
                             <input type="checkbox" id="enable-smart-filter" class="w-5 h-5">
                             <span class="text-orange-400 font-semibold">Smart Terrain Filter (Reduce Noise)</span>
                         </label>
-                        <button id="analyze-terrain-btn" class="bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold py-1 px-3 rounded">
+                        <button id="analyze-terrain-btn" class="bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold py-2 px-4 rounded">
                             Analyze Terrain
                         </button>
                     </div>
+
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300">Number of Frames to Analyze</span>
+                            <span class="text-orange-300" id="terrain-frames-val">20</span>
+                        </div>
+                        <input type="range" id="terrain-frames" min="5" max="50" step="5" value="20" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Faster (5)</span>
+                            <span>More thorough (50)</span>
+                        </div>
+                    </div>
+
                     <div class="mb-2">
                         <div class="flex justify-between text-xs mb-1">
                             <span class="text-gray-300">Filter Strength (std devs)</span>
                             <span class="text-orange-300" id="filter-strength-val">1.5</span>
                         </div>
-                        <input type="range" id="filter-strength" min="0.5" max="3.0" step="0.1" value="1.5" class="w-full">
+                        <input type="range" id="filter-strength" min="0.1" max="5.0" step="0.1" value="1.5" class="w-full">
                         <div class="flex justify-between text-xs text-gray-500 mt-1">
                             <span>More detections</span>
                             <span>Less noise</span>
                         </div>
                     </div>
-                    <p class="text-xs text-gray-400">Analyzes video to learn terrain colors, then filters out detections that match common terrain hues/saturation. Lower = more aggressive filtering.</p>
-                    <div id="terrain-info" class="text-xs text-gray-300 mt-2 hidden"></div>
+
+                    <p class="text-xs text-gray-400 mb-3">Analyzes video to learn terrain colors, then filters out detections that match common terrain hues/saturation. Lower = more aggressive filtering.</p>
+
+                    <div id="terrain-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden"></div>
+                </div>
+
+                <!-- Global HSV Distribution Filter -->
+                <div class="bg-purple-900 bg-opacity-20 p-4 rounded mb-4 border-2 border-purple-500">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" id="enable-global-filter" class="w-5 h-5">
+                            <span class="text-purple-400 font-semibold">Global Distribution Filter (Exclude Typical Colors)</span>
+                        </label>
+                        <button id="analyze-global-btn" class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold py-2 px-4 rounded">
+                            Analyze Video
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300">Number of Frames to Analyze</span>
+                            <span class="text-purple-300" id="global-frames-val">50</span>
+                        </div>
+                        <input type="range" id="global-frames" min="10" max="100" step="10" value="50" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Faster (10)</span>
+                            <span>More thorough (100)</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300">Exclusion Threshold (Percentile)</span>
+                            <span class="text-purple-300" id="global-threshold-val">90</span>
+                        </div>
+                        <input type="range" id="global-threshold" min="50" max="99" step="1" value="90" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>Exclude common (50%)</span>
+                            <span>Keep rare only (99%)</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-300">Standard Deviations</span>
+                            <span class="text-purple-300" id="global-std-val">2.0</span>
+                        </div>
+                        <input type="range" id="global-std" min="0.5" max="5.0" step="0.1" value="2.0" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>More aggressive (0.5)</span>
+                            <span>Less aggressive (5.0)</span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-400 mb-3">Analyzes the entire video's HSV color distribution and excludes detections within typical color ranges. Colors that appear frequently throughout the video are considered "normal" and filtered out.</p>
+
+                    <div id="global-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden"></div>
+                </div>
+
+                <!-- DBSCAN Settings -->
+                <div class="bg-indigo-900 bg-opacity-20 p-4 rounded mb-4 border-2 border-indigo-500">
+                    <h3 class="text-lg font-semibold mb-2 text-indigo-400">DBSCAN Clustering</h3>
+                    <p class="text-xs text-gray-400 mb-3">Uses density-based clustering to identify anomalous color patterns in the video</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-300">Epsilon (Color Distance)</span>
+                                <span class="text-indigo-300" id="dbscan-eps-val">15</span>
+                            </div>
+                            <input type="range" id="dbscan-eps" min="5" max="30" step="1" value="15" class="w-full">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Tight (5)</span>
+                                <span>Loose (30)</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-300">Min Points per Cluster</span>
+                                <span class="text-indigo-300" id="dbscan-minpts-val">5</span>
+                            </div>
+                            <input type="range" id="dbscan-minpts" min="3" max="20" step="1" value="5" class="w-full">
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Sensitive (3)</span>
+                                <span>Robust (20)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="dbscan-info" class="text-xs text-gray-300 bg-gray-800 p-2 rounded hidden"></div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                     <!-- HSV Controls -->
                     <div id="hsv-controls">
-                        <h3 class="text-lg font-medium text-green-400 mb-2">HSV Color Ranges</h3>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <input type="checkbox" id="enable-hsv" class="w-5 h-5">
+                            <h3 class="text-lg font-medium text-green-400">HSV Color Range</h3>
+                        </div>
 
                         <!-- HSV Option 1 -->
                         <div class="mb-3 p-3 bg-gray-800 border border-green-500 rounded">
@@ -129,6 +230,16 @@
                                 <label class="flex items-center space-x-2">
                                     <input type="checkbox" id="hsv1-enabled" class="w-4 h-4" checked>
                                     <span class="font-semibold text-green-400">HSV Option 1</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-4 mb-2 text-xs">
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv1-mode" value="include" class="w-3 h-3" checked>
+                                    <span class="text-green-300">Include</span>
+                                </label>
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv1-mode" value="exclude" class="w-3 h-3">
+                                    <span class="text-red-300">Exclude</span>
                                 </label>
                             </div>
                             <div class="space-y-2 text-xs">
@@ -187,6 +298,16 @@
                                     <span class="font-semibold text-blue-400">HSV Option 2</span>
                                 </label>
                             </div>
+                            <div class="flex items-center gap-4 mb-2 text-xs">
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv2-mode" value="include" class="w-3 h-3" checked>
+                                    <span class="text-green-300">Include</span>
+                                </label>
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv2-mode" value="exclude" class="w-3 h-3">
+                                    <span class="text-red-300">Exclude</span>
+                                </label>
+                            </div>
                             <div class="space-y-2 text-xs">
                                 <div>
                                     <div class="flex justify-between mb-1">
@@ -243,6 +364,16 @@
                                     <span class="font-semibold text-cyan-400">HSV Option 3</span>
                                 </label>
                             </div>
+                            <div class="flex items-center gap-4 mb-2 text-xs">
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv3-mode" value="include" class="w-3 h-3" checked>
+                                    <span class="text-green-300">Include</span>
+                                </label>
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv3-mode" value="exclude" class="w-3 h-3">
+                                    <span class="text-red-300">Exclude</span>
+                                </label>
+                            </div>
                             <div class="space-y-2 text-xs">
                                 <div>
                                     <div class="flex justify-between mb-1">
@@ -291,56 +422,79 @@
                             </div>
                         </div>
 
-                        <!-- HSV Exclusion -->
+                        <!-- HSV Option 4 -->
                         <div class="mb-3 p-3 bg-gray-800 border border-red-500 rounded">
                             <div class="flex items-center justify-between mb-2">
                                 <label class="flex items-center space-x-2">
-                                    <input type="checkbox" id="hsv-exclusion-enabled" class="w-4 h-4">
-                                    <span class="font-semibold text-red-400">HSV Exclusion (ignore this range)</span>
+                                    <input type="checkbox" id="hsv4-enabled" class="w-4 h-4">
+                                    <span class="font-semibold text-red-400">HSV Option 4</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center gap-4 mb-2 text-xs">
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv4-mode" value="include" class="w-3 h-3" checked>
+                                    <span class="text-green-300">Include</span>
+                                </label>
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input type="radio" name="hsv4-mode" value="exclude" class="w-3 h-3">
+                                    <span class="text-red-300">Exclude</span>
                                 </label>
                             </div>
                             <div class="space-y-2 text-xs">
                                 <div>
                                     <div class="flex justify-between mb-1">
                                         <span>H (Hue)</span>
-                                        <span><span id="hsv-ex-h-min-val">0</span> - <span id="hsv-ex-h-max-val">0</span></span>
+                                        <span><span id="hsv4-h-min-val">0</span> - <span id="hsv4-h-max-val">179</span></span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <input type="range" id="hsv-ex-h-min" min="0" max="179" value="0" class="flex-1">
-                                        <input type="range" id="hsv-ex-h-max" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv4-h-min" min="0" max="179" value="0" class="flex-1">
+                                        <input type="range" id="hsv4-h-max" min="0" max="179" value="179" class="flex-1">
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between mb-1">
                                         <span>S (Saturation)</span>
-                                        <span><span id="hsv-ex-s-min-val">0</span> - <span id="hsv-ex-s-max-val">0</span></span>
+                                        <span><span id="hsv4-s-min-val">150</span> - <span id="hsv4-s-max-val">255</span></span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <input type="range" id="hsv-ex-s-min" min="0" max="255" value="0" class="flex-1">
-                                        <input type="range" id="hsv-ex-s-max" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv4-s-min" min="0" max="255" value="150" class="flex-1">
+                                        <input type="range" id="hsv4-s-max" min="0" max="255" value="255" class="flex-1">
                                     </div>
                                 </div>
                                 <div>
                                     <div class="flex justify-between mb-1">
                                         <span>V (Value)</span>
-                                        <span><span id="hsv-ex-v-min-val">0</span> - <span id="hsv-ex-v-max-val">0</span></span>
+                                        <span><span id="hsv4-v-min-val">100</span> - <span id="hsv4-v-max-val">255</span></span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <input type="range" id="hsv-ex-v-min" min="0" max="255" value="0" class="flex-1">
-                                        <input type="range" id="hsv-ex-v-max" min="0" max="255" value="0" class="flex-1">
+                                        <input type="range" id="hsv4-v-min" min="0" max="255" value="100" class="flex-1">
+                                        <input type="range" id="hsv4-v-max" min="0" max="255" value="255" class="flex-1">
                                     </div>
                                 </div>
                             </div>
                             <div class="mt-2 bg-gray-900 rounded p-2">
                                 <div class="text-xs text-gray-400 mb-1">Color Preview:</div>
-                                <canvas id="hsv-ex-preview" width="200" height="30" class="w-full rounded"></canvas>
+                                <canvas id="hsv4-preview" width="200" height="30" class="w-full rounded"></canvas>
+                            </div>
+                            <div class="mt-2">
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span>Size Range (pixels)</span>
+                                    <span><span id="hsv4-size-min-val">200</span> - <span id="hsv4-size-max-val">20000</span></span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="hsv4-min-size" min="50" max="2000" value="200" class="flex-1">
+                                    <input type="range" id="hsv4-max-size" min="2000" max="100000" value="20000" class="flex-1">
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Saturation Controls moved from below -->
                     <div id="sat-controls">
-                        <h3 class="text-lg font-medium text-purple-400 mb-2">High Saturation Settings</h3>
+                        <div class="flex items-center space-x-2 mb-3">
+                            <input type="checkbox" id="enable-sat" class="w-5 h-5">
+                            <h3 class="text-lg font-medium text-purple-400">High Saturation</h3>
+                        </div>
                         
                         <div class="mb-3 p-3 bg-gray-800 border border-purple-500 rounded">
                             <div class="flex items-center justify-between mb-2">
@@ -426,20 +580,20 @@
                     </div>
                     <div>
                         <label class="text-sm font-medium mb-2 block">Sample Every N Frames</label>
-                        <select id="frame-sample-rate" class="w-full bg-gray-700 text-white p-2 rounded">
-                            <option value="1">Every Frame (Slow)</option>
-                            <option value="5">Every 5 Frames</option>
-                            <option value="10" selected>Every 10 Frames (Balanced)</option>
-                            <option value="15">Every 15 Frames</option>
-                            <option value="30">Every 30 Frames (Fast)</option>
-                            <option value="60">Every 60 Frames</option>
-                        </select>
+                        <input type="number" id="frame-sample-rate" min="1" max="120" value="10" placeholder="e.g., 10" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-purple-500 focus:outline-none">
                     </div>
-                    <div class="col-span-2 flex items-end gap-2">
-                        <button id="quick-analyze-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors">
-                            Quick Analyze
-                        </button>
-                        <button id="batch-process-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded flex-1 transition-colors">
+                    <div class="col-span-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <button id="quick-analyze-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors">
+                                Quick Analyze
+                            </button>
+                            <label class="flex items-center space-x-2 cursor-pointer text-sm">
+                                <input type="checkbox" id="use-dbscan" class="w-4 h-4">
+                                <span class="text-gray-300">Use DBSCAN clustering</span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-2">Samples video frames to auto-configure optimal detection settings based on color anomalies</p>
+                        <button id="batch-process-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded w-full transition-colors">
                             Process All Frames
                         </button>
                     </div>
@@ -455,6 +609,8 @@
                         <div><strong>Sat Range:</strong> <span id="ind-sat-range">150-255</span></div>
                         <div><strong>Smart Filter:</strong> <span id="ind-smart-filter">Off</span></div>
                         <div><strong>Size Range:</strong> <span id="ind-size-range">200-20000px</span></div>
+                        <div><strong>Exclusion Source:</strong> <span id="ind-exclusion-source">None</span></div>
+                        <div><strong>DBSCAN:</strong> <span id="ind-dbscan">Off</span></div>
                     </div>
                 </div>
 
@@ -491,22 +647,15 @@
                     <div class="aspect-video bg-gray-900 rounded overflow-hidden relative">
                         <canvas id="canvas-out" style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;"></canvas>
                     </div>
+
+                    <!-- Detection Details Below Output -->
+                    <div id="current-frame-detections" class="mt-3 p-3 bg-gray-700 rounded hidden">
+                        <h3 class="text-sm font-semibold text-sky-400 mb-2">Current Frame Detections:</h3>
+                        <div id="current-detections-list" class="space-y-1 text-xs max-h-40 overflow-y-auto"></div>
+                    </div>
+
                     <div class="mt-4">
                         <input type="range" id="video-seek" min="0" max="100" value="0" class="w-full">
-                    </div>
-                    <div id="detection-stats" class="mt-4 grid grid-cols-3 gap-4 text-center">
-                        <div class="bg-gray-700 p-3 rounded">
-                            <div class="text-green-400 text-2xl font-bold" id="hsv-count">0</div>
-                            <div class="text-xs text-gray-400">HSV</div>
-                        </div>
-                        <div class="bg-gray-700 p-3 rounded">
-                            <div class="text-purple-400 text-2xl font-bold" id="sat-count">0</div>
-                            <div class="text-xs text-gray-400">High Sat</div>
-                        </div>
-                        <div class="bg-gray-700 p-3 rounded">
-                            <div class="text-sky-400 text-2xl font-bold" id="total-count">0</div>
-                            <div class="text-xs text-gray-400">Total</div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -528,6 +677,11 @@
         // Terrain baseline for smart filtering
         let terrainBaseline = null;
         let useSmartFilter = false;
+        
+        // Global HSV distribution for whole video
+        let globalHsvDistribution = null;
+        let enableGlobalFilter = false;
+        
         let isSeekingSuppressed = false;
         let isProgrammaticChange = false; // Flag to prevent cascading processSingleFrame calls
 
@@ -626,6 +780,17 @@
 
                 video.onloadedmetadata = () => {
                     updateStatus("Video loaded! Initializing OpenCV...", "text-green-400");
+
+                    // Display video information
+                    const duration = video.duration;
+                    const fps = 30; // Estimate, could be refined
+                    const totalFrames = Math.floor(duration * fps);
+
+                    document.getElementById('video-duration').textContent = `${duration.toFixed(2)}s`;
+                    document.getElementById('video-frames').textContent = totalFrames.toString();
+                    document.getElementById('video-fps').textContent = `~${fps}`;
+                    document.getElementById('video-info').classList.remove('hidden');
+
                     initMatsIfReady();
                 };
 
@@ -664,7 +829,65 @@
                     alert('Please click "Analyze Terrain" first to build the baseline.');
                     e.target.checked = false;
                     useSmartFilter = false;
+                } else if (terrainBaseline) {
+                    // Update terrain info display when checkbox is toggled
+                    const terrainFrames = document.getElementById('terrain-frames').value;
+                    const filterStrength = document.getElementById('filter-strength').value;
+                    const infoEl = document.getElementById('terrain-info');
+                    const currentHTML = infoEl.innerHTML;
+
+                    // Update the active/inactive status in the existing HTML
+                    const updatedHTML = currentHTML.replace(
+                        /class="[^"]*">[^<]*(?:✓ ACTIVE|○ INACTIVE)/,
+                        `class="${useSmartFilter ? 'text-orange-400' : 'text-gray-400'}">${useSmartFilter ? '✓ ACTIVE' : '○ INACTIVE'}`
+                    ).replace(
+                        /To (?:disable|enable): (?:uncheck|check)/,
+                        `To ${useSmartFilter ? 'disable' : 'enable'}: ${useSmartFilter ? 'uncheck' : 'check'}`
+                    );
+
+                    infoEl.innerHTML = updatedHTML;
                 }
+            });
+            
+            // Global HSV distribution filter event listeners
+            document.getElementById('analyze-global-btn').addEventListener('click', () => {
+                if (!video || !video.src) {
+                    updateStatus("Please load a video first.", "text-red-400");
+                    return;
+                }
+                analyzeGlobalDistribution();
+            });
+            
+            document.getElementById('enable-global-filter').addEventListener('change', (e) => {
+                enableGlobalFilter = e.target.checked;
+                if (enableGlobalFilter && !globalHsvDistribution) {
+                    alert('Please click "Analyze Video" first to build the global distribution.');
+                    e.target.checked = false;
+                    enableGlobalFilter = false;
+                } else if (globalHsvDistribution) {
+                    const infoEl = document.getElementById('global-info');
+                    const currentHTML = infoEl.innerHTML;
+                    const updatedHTML = currentHTML.replace(
+                        /class="[^"]*">[^<]*(?:✓ ACTIVE|○ INACTIVE)/,
+                        `class="${enableGlobalFilter ? 'text-purple-400' : 'text-gray-400'}">${enableGlobalFilter ? '✓ ACTIVE' : '○ INACTIVE'}`
+                    ).replace(
+                        /To (?:disable|enable): (?:uncheck|check)/,
+                        `To ${enableGlobalFilter ? 'disable' : 'enable'}: ${enableGlobalFilter ? 'uncheck' : 'check'}`
+                    );
+                    infoEl.innerHTML = updatedHTML;
+                }
+            });
+            
+            document.getElementById('global-frames').addEventListener('input', (e) => {
+                document.getElementById('global-frames-val').textContent = e.target.value;
+            });
+            
+            document.getElementById('global-threshold').addEventListener('input', (e) => {
+                document.getElementById('global-threshold-val').textContent = e.target.value;
+            });
+            
+            document.getElementById('global-std').addEventListener('input', (e) => {
+                document.getElementById('global-std-val').textContent = e.target.value;
             });
             
             // Simple modal like Python script
@@ -765,6 +988,18 @@
                 document.getElementById('filter-strength-val').textContent = e.target.value;
             });
 
+            document.getElementById('terrain-frames').addEventListener('input', (e) => {
+                document.getElementById('terrain-frames-val').textContent = e.target.value;
+            });
+
+            document.getElementById('dbscan-eps').addEventListener('input', (e) => {
+                document.getElementById('dbscan-eps-val').textContent = e.target.value;
+            });
+
+            document.getElementById('dbscan-minpts').addEventListener('input', (e) => {
+                document.getElementById('dbscan-minpts-val').textContent = e.target.value;
+            });
+
             // Color preset buttons with toggle
             document.querySelectorAll('.preset-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -847,11 +1082,12 @@
             //     if (el) el.addEventListener('input', updateColorPreviews);
             // });
 
-            // Add event listeners for HSV option inputs (1, 2, 3)
+            // Add event listeners for HSV option inputs (1, 2, 3, 4)
             const hsvOptionInputs = [
                 { ids: ['hsv1-h-min', 'hsv1-h-max', 'hsv1-s-min', 'hsv1-s-max', 'hsv1-v-min', 'hsv1-v-max'], prefix: 'hsv1' },
                 { ids: ['hsv2-h-min', 'hsv2-h-max', 'hsv2-s-min', 'hsv2-s-max', 'hsv2-v-min', 'hsv2-v-max'], prefix: 'hsv2' },
-                { ids: ['hsv3-h-min', 'hsv3-h-max', 'hsv3-s-min', 'hsv3-s-max', 'hsv3-v-min', 'hsv3-v-max'], prefix: 'hsv3' }
+                { ids: ['hsv3-h-min', 'hsv3-h-max', 'hsv3-s-min', 'hsv3-s-max', 'hsv3-v-min', 'hsv3-v-max'], prefix: 'hsv3' },
+                { ids: ['hsv4-h-min', 'hsv4-h-max', 'hsv4-s-min', 'hsv4-s-max', 'hsv4-v-min', 'hsv4-v-max'], prefix: 'hsv4' }
             ];
 
             hsvOptionInputs.forEach(option => {
@@ -873,29 +1109,6 @@
                         });
                     }
                 });
-            });
-
-            // Add separate event listeners for HSV exclusion inputs
-            const hsvExclusionIds = [
-                'hsv-ex-h-min', 'hsv-ex-h-max', 'hsv-ex-s-min', 'hsv-ex-s-max', 'hsv-ex-v-min', 'hsv-ex-v-max'
-            ];
-            hsvExclusionIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', () => {
-                        // Update value display
-                        const valEl = document.getElementById(`${id}-val`);
-                        if (valEl) {
-                            valEl.textContent = el.value;
-                        }
-
-                        // Only update exclusion preview
-                        updateHSVPreview('hsv-ex');
-                        if (!isProcessing && !isProgrammaticChange) {
-                            processSingleFrame();
-                        }
-                    });
-                }
             });
 
             // Batch processing button
@@ -987,6 +1200,7 @@
                 return;
             }
 
+            const useDbscan = document.getElementById('use-dbscan').checked;
             updateStatus("Quick analyzing video for smart detection...", "text-indigo-400");
 
             // First analyze terrain if not done
@@ -996,17 +1210,28 @@
                 const checkInterval = setInterval(() => {
                     if (terrainBaseline) {
                         clearInterval(checkInterval);
-                        performSmartAnalysis();
+                        if (useDbscan) {
+                            performDbscanAnalysis();
+                        } else {
+                            performSmartAnalysis();
+                        }
                     }
                 }, 500);
             } else {
-                performSmartAnalysis();
+                if (useDbscan) {
+                    performDbscanAnalysis();
+                } else {
+                    performSmartAnalysis();
+                }
             }
         }
 
         function performSmartAnalysis() {
             const savedTime = video.currentTime;
             isSeekingSuppressed = true;
+
+            // Mark that DBSCAN was NOT used
+            window.dbscanUsed = false;
 
             const duration = video.duration;
             const sampleFrames = 20;
@@ -1065,6 +1290,230 @@
             }
 
             sampleNext();
+        }
+
+        function performDbscanAnalysis() {
+            const savedTime = video.currentTime;
+            isSeekingSuppressed = true;
+
+            // Mark that DBSCAN was used
+            window.dbscanUsed = true;
+
+            const duration = video.duration;
+            const sampleFrames = 10; // Reduced from 20 for faster processing
+            const frameStep = duration / sampleFrames;
+
+            let allPixels = [];
+            let frameIndex = 0;
+
+            function sampleNext() {
+                if (frameIndex >= sampleFrames) {
+                    isSeekingSuppressed = false;
+                    video.currentTime = savedTime;
+
+                    // Limit pixel count for DBSCAN performance
+                    const maxPixels = 500;
+                    if (allPixels.length > maxPixels) {
+                        // Randomly sample pixels
+                        allPixels = allPixels.sort(() => 0.5 - Math.random()).slice(0, maxPixels);
+                    }
+
+                    updateStatus(`Running DBSCAN on ${allPixels.length} pixels...`, "text-indigo-400");
+
+                    // Get DBSCAN parameters from sliders
+                    const eps = parseInt(document.getElementById('dbscan-eps').value) || 15;
+                    const minPts = parseInt(document.getElementById('dbscan-minpts').value) || 5;
+
+                    // Perform DBSCAN clustering
+                    const clusters = dbscan(allPixels, eps, minPts);
+                    configureDbscanDetection(clusters, allPixels);
+                    return;
+                }
+
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+
+                    try {
+                        cap.read(srcMat);
+                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+
+                        const h = hsvMat.rows;
+                        const w = hsvMat.cols;
+                        const step = 50; // Increased step for fewer samples
+
+                        for (let y = 0; y < h; y += step) {
+                            for (let x = 0; x < w; x += step) {
+                                const hue = hsvMat.ucharPtr(y, x)[0];
+                                const sat = hsvMat.ucharPtr(y, x)[1];
+                                const val = hsvMat.ucharPtr(y, x)[2];
+
+                                if (val > 30 && val < 230 && sat > 50) {
+                                    allPixels.push({hue, sat, val});
+                                }
+                            }
+                        }
+
+                        frameIndex++;
+                        setTimeout(sampleNext, 50);
+                    } catch (err) {
+                        console.error("Error:", err);
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                    }
+                };
+
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(frameIndex * frameStep, duration - 0.1);
+            }
+
+            sampleNext();
+        }
+
+        function dbscan(points, eps, minPts) {
+            const labels = new Array(points.length).fill(-1);
+            let clusterId = 0;
+
+            function distance(p1, p2) {
+                // Euclidean distance in HSV space
+                const dh = Math.min(Math.abs(p1.hue - p2.hue), 180 - Math.abs(p1.hue - p2.hue));
+                const ds = Math.abs(p1.sat - p2.sat);
+                return Math.sqrt(dh * dh + ds * ds);
+            }
+
+            function regionQuery(pointIdx) {
+                const neighbors = [];
+                for (let i = 0; i < points.length; i++) {
+                    if (distance(points[pointIdx], points[i]) <= eps) {
+                        neighbors.push(i);
+                    }
+                }
+                return neighbors;
+            }
+
+            function expandCluster(pointIdx, neighbors, clusterId) {
+                labels[pointIdx] = clusterId;
+                const neighborSet = new Set(neighbors);
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const neighborIdx = neighbors[i];
+
+                    if (labels[neighborIdx] === -1 || labels[neighborIdx] === undefined) {
+                        labels[neighborIdx] = clusterId;
+                        const neighborNeighbors = regionQuery(neighborIdx);
+                        if (neighborNeighbors.length >= minPts) {
+                            // Add new neighbors using Set to avoid duplicates
+                            for (const nn of neighborNeighbors) {
+                                if (!neighborSet.has(nn)) {
+                                    neighbors.push(nn);
+                                    neighborSet.add(nn);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (let i = 0; i < points.length; i++) {
+                if (labels[i] !== -1) continue;
+
+                const neighbors = regionQuery(i);
+                if (neighbors.length < minPts) {
+                    labels[i] = -1; // Noise
+                } else {
+                    expandCluster(i, neighbors, clusterId);
+                    clusterId++;
+                }
+            }
+
+            return { labels, numClusters: clusterId };
+        }
+
+        function configureDbscanDetection(clusters, pixels) {
+            // Find anomalous clusters (smaller clusters are likely anomalies)
+            const clusterSizes = {};
+            clusters.labels.forEach(label => {
+                if (label !== -1) {
+                    clusterSizes[label] = (clusterSizes[label] || 0) + 1;
+                }
+            });
+
+            // Get cluster statistics
+            const clusterStats = {};
+            clusters.labels.forEach((label, idx) => {
+                if (label !== -1) {
+                    if (!clusterStats[label]) {
+                        clusterStats[label] = { hues: [], sats: [], vals: [] };
+                    }
+                    clusterStats[label].hues.push(pixels[idx].hue);
+                    clusterStats[label].sats.push(pixels[idx].sat);
+                    clusterStats[label].vals.push(pixels[idx].val);
+                }
+            });
+
+            // Find smallest clusters (anomalies)
+            const sortedClusters = Object.entries(clusterSizes).sort((a, b) => a[1] - b[1]);
+            if (sortedClusters.length === 0) {
+                updateStatus("No distinct color clusters found. Using default settings.", "text-yellow-400");
+                return;
+            }
+
+            // Use the smallest cluster as the anomaly target
+            const anomalyCluster = sortedClusters[0][0];
+            const stats = clusterStats[anomalyCluster];
+
+            const avgHue = stats.hues.reduce((a, b) => a + b, 0) / stats.hues.length;
+            const avgSat = stats.sats.reduce((a, b) => a + b, 0) / stats.sats.length;
+
+            // Configure HSV ranges around the anomaly cluster
+            const hueRange = 15;
+            const satRange = 30;
+
+            document.getElementById('hsv1-h-min').value = Math.max(0, Math.floor(avgHue - hueRange));
+            document.getElementById('hsv1-h-max').value = Math.min(179, Math.ceil(avgHue + hueRange));
+            document.getElementById('hsv1-s-min').value = Math.max(0, Math.floor(avgSat - satRange));
+            document.getElementById('hsv1-s-max').value = Math.min(255, Math.ceil(avgSat + satRange));
+
+            // Trigger update events
+            document.getElementById('hsv1-h-min').dispatchEvent(new Event('input'));
+            document.getElementById('hsv1-h-max').dispatchEvent(new Event('input'));
+            document.getElementById('hsv1-s-min').dispatchEvent(new Event('input'));
+            document.getElementById('hsv1-s-max').dispatchEvent(new Event('input'));
+
+            // Enable HSV detection
+            document.getElementById('enable-hsv').checked = true;
+            document.getElementById('hsv1-enabled').checked = true;
+
+            updateStatus(`DBSCAN: Found ${clusters.numClusters} clusters. Configured for smallest cluster (likely anomaly).`, "text-green-400");
+
+            // Show DBSCAN info
+            document.getElementById('dbscan-info').classList.remove('hidden');
+            document.getElementById('dbscan-info').innerHTML = `
+                <strong class="text-indigo-400">✓ DBSCAN Analysis Complete</strong><br>
+                <div class="pl-2 mt-1">
+                <strong>Cluster Statistics:</strong><br>
+                • Found ${clusters.numClusters} color clusters<br>
+                • Target cluster (anomaly): ${clusterSizes[anomalyCluster]} pixels<br>
+                • Average Hue: ${avgHue.toFixed(0)}, Average Sat: ${avgSat.toFixed(0)}<br>
+                • Configured HSV range: H=${Math.floor(avgHue - hueRange)}-${Math.ceil(avgHue + hueRange)}, S=${Math.floor(avgSat - satRange)}-${Math.ceil(avgSat + satRange)}<br>
+                <em class="text-indigo-300">HSV detection configured to target the smallest cluster</em>
+                </div>
+            `;
+
+            // Also show in smart settings info for backward compatibility
+            document.getElementById('smart-settings-info').classList.remove('hidden');
+            document.getElementById('smart-settings-text').innerHTML = `
+                DBSCAN Analysis Complete:<br>
+                - Found ${clusters.numClusters} color clusters<br>
+                - Target cluster size: ${clusterSizes[anomalyCluster]} pixels<br>
+                - Configured HSV range: H=${Math.floor(avgHue - hueRange)}-${Math.ceil(avgHue + hueRange)}, S=${Math.floor(avgSat - satRange)}-${Math.ceil(avgSat + satRange)}
+            `;
+
+            // Update settings indicator and reprocess current frame
+            updateSettingsIndicator();
+            if (!isProcessing && video && video.videoWidth) {
+                processSingleFrame();
+            }
         }
 
         function configureSmartDetection(hueData, satData) {
@@ -1737,6 +2186,28 @@
                 const sizeMax = document.getElementById('hsv1-max-size')?.value || '20000';
                 sizeRangeEl.textContent = `${sizeMin}-${sizeMax}px`;
             }
+
+            // Update Exclusion Source
+            const exclusionSourceEl = document.getElementById('ind-exclusion-source');
+            if (exclusionSourceEl && window.exclusionSource) {
+                exclusionSourceEl.textContent = window.exclusionSource;
+                exclusionSourceEl.className = 'text-yellow-400';
+            } else {
+                exclusionSourceEl.textContent = 'None';
+                exclusionSourceEl.className = 'text-gray-500';
+            }
+
+            // Update DBSCAN status
+            const dbscanEl = document.getElementById('ind-dbscan');
+            if (dbscanEl) {
+                if (window.dbscanUsed) {
+                    dbscanEl.textContent = 'Used';
+                    dbscanEl.className = 'text-indigo-400';
+                } else {
+                    dbscanEl.textContent = 'Off';
+                    dbscanEl.className = 'text-gray-500';
+                }
+            }
         }
 
         function useAnalysisAsExclusion() {
@@ -1753,10 +2224,11 @@
 
                 const h = hsvMat.rows;
                 const w = hsvMat.cols;
-                const step = 20;
+                const step = 10; // Finer sampling for better exclusion
 
                 let hueValues = [];
                 let satValues = [];
+                let valValues = [];
 
                 for (let y = 0; y < h; y += step) {
                     for (let x = 0; x < w; x += step) {
@@ -1767,6 +2239,7 @@
                         if (val > 30 && val < 230) {
                             hueValues.push(hue);
                             satValues.push(sat);
+                            valValues.push(val);
                         }
                     }
                 }
@@ -1812,6 +2285,37 @@
                     </div>
                 `;
                 infoEl.classList.remove('hidden');
+
+                // Set exclusion source
+                window.exclusionSource = 'Current Frame';
+
+                // Also update HSV Option 4 sliders with tighter ranges for better exclusion
+                // Use percentiles for more robust exclusion (P10-P90 covers most of the frame)
+                const valMean = valValues.reduce((a, b) => a + b, 0) / valValues.length;
+
+                document.getElementById('hsv4-h-min').value = Math.max(0, hueP25 - 5);
+                document.getElementById('hsv4-h-max').value = Math.min(179, hueP75 + 5);
+                document.getElementById('hsv4-s-min').value = Math.max(0, satP25 - 10);
+                document.getElementById('hsv4-s-max').value = Math.min(255, satP75 + 10);
+
+                // Also use value range for better exclusion
+                valValues.sort((a, b) => a - b);
+                const valP25 = valValues[Math.floor(valValues.length * 0.25)];
+                const valP75 = valValues[Math.floor(valValues.length * 0.75)];
+                document.getElementById('hsv4-v-min').value = Math.max(0, valP25 - 20);
+                document.getElementById('hsv4-v-max').value = Math.min(255, valP75 + 20);
+
+                // Trigger update events
+                document.getElementById('hsv4-h-min').dispatchEvent(new Event('input'));
+                document.getElementById('hsv4-h-max').dispatchEvent(new Event('input'));
+                document.getElementById('hsv4-s-min').dispatchEvent(new Event('input'));
+                document.getElementById('hsv4-s-max').dispatchEvent(new Event('input'));
+                document.getElementById('hsv4-v-min').dispatchEvent(new Event('input'));
+                document.getElementById('hsv4-v-max').dispatchEvent(new Event('input'));
+
+                // Enable HSV Option 4 and set to exclude mode
+                document.getElementById('hsv4-enabled').checked = true;
+                document.querySelector('input[name="hsv4-mode"][value="exclude"]').checked = true;
 
                 // Enable smart filter
                 document.getElementById('enable-smart-filter').checked = true;
@@ -2020,7 +2524,18 @@
             const detections = [];
 
             try {
+                // Validate Mats are available and not deleted
+                if (!srcMat || !rgbMat || !hsvMat || !cap) {
+                    console.warn("Mats not initialized, skipping frame");
+                    return detections;
+                }
+
                 cap.read(srcMat);
+                if (srcMat.empty()) {
+                    console.warn("Empty frame, skipping");
+                    return detections;
+                }
+
                 cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
                 cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
 
@@ -2030,22 +2545,11 @@
                 // Multi-HSV Detection
                 if (enableHsv) {
                     const hsvOptions = [
-                        { prefix: 'hsv1', enabled: document.getElementById('hsv1-enabled')?.checked },
-                        { prefix: 'hsv2', enabled: document.getElementById('hsv2-enabled')?.checked },
-                        { prefix: 'hsv3', enabled: document.getElementById('hsv3-enabled')?.checked }
+                        { prefix: 'hsv1', enabled: document.getElementById('hsv1-enabled')?.checked, mode: document.querySelector('input[name="hsv1-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv2', enabled: document.getElementById('hsv2-enabled')?.checked, mode: document.querySelector('input[name="hsv2-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv3', enabled: document.getElementById('hsv3-enabled')?.checked, mode: document.querySelector('input[name="hsv3-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv4', enabled: document.getElementById('hsv4-enabled')?.checked, mode: document.querySelector('input[name="hsv4-mode"]:checked')?.value || 'include' }
                     ];
-
-                    // Get exclusion range if enabled
-                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
-                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
-                    if (exclusionEnabled) {
-                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
-                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
-                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
-                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
-                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
-                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
-                    }
 
                     for (const option of hsvOptions) {
                         if (!option.enabled) continue;
@@ -2065,6 +2569,11 @@
                         cv.inRange(hsvMat, lowMat, highMat, optionMask);
                         lowMat.delete();
                         highMat.delete();
+
+                        // If exclude mode, invert the mask
+                        if (option.mode === 'exclude') {
+                            cv.bitwise_not(optionMask, optionMask);
+                        }
 
                         if (contours) {
                             for (let i = 0; i < contours.size(); ++i) contours.get(i).delete();
@@ -2088,25 +2597,14 @@
 
                                 let skipDetection = false;
 
-                                // Check if color is in exclusion range
-                                if (exclusionEnabled) {
-                                    let inExclusion = false;
-                                    if (exHMin <= exHMax) {
-                                        inExclusion = (detHue >= exHMin && detHue <= exHMax);
-                                    } else {
-                                        inExclusion = (detHue >= exHMin || detHue <= exHMax);
-                                    }
-                                    inExclusion = inExclusion &&
-                                                 (detSat >= exSMin && detSat <= exSMax) &&
-                                                 (detVal >= exVMin && detVal <= exVMax);
-                                    if (inExclusion) skipDetection = true;
-                                }
-
                                 // Check if color is excluded (old system)
                                 if (isExcludedColor(detHue)) skipDetection = true;
 
                                 // Check if color matches terrain baseline
                                 if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                
+                                // Check if color is within global distribution
+                                if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) skipDetection = true;
 
                                 if (skipDetection) continue;
 
@@ -2122,6 +2620,7 @@
 
                         optionMask.delete();
                     }
+
                 }
 
                 // High Saturation Detection
@@ -2160,12 +2659,16 @@
 
                             const detHue = hsvMat.ucharPtr(cy, cx)[0];
                             const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                            const detVal = hsvMat.ucharPtr(cy, cx)[2];
 
                             // Check if color is excluded
                             if (isExcludedColor(detHue)) continue;
 
                             // Check if color matches terrain baseline
                             if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
+                            
+                            // Check if color is within global distribution
+                            if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) continue;
 
                             detections.push({
                                 type: 'Sat',
@@ -2293,27 +2796,15 @@
                 thumbnailImg.className = 'w-full h-auto';
                 thumbnailImg.alt = `Frame ${frameData.frame}`;
 
-                // Create detection info section
+                // Create minimal info section - just frame number and count
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'p-2';
 
                 const frameInfo = document.createElement('div');
-                frameInfo.className = 'text-xs text-sky-400 font-semibold mb-1';
-                frameInfo.textContent = `Frame ${frameData.frame} (${frameData.time.toFixed(2)}s)`;
-
-                const detectionsDiv = document.createElement('div');
-                detectionsDiv.className = 'space-y-1';
-
-                frameData.detections.forEach(det => {
-                    const detLine = document.createElement('div');
-                    detLine.className = 'text-xs';
-                    const colorClass = det.type === 'HSV' ? 'text-green-400' : 'text-purple-400';
-                    detLine.innerHTML = `<span class="${colorClass}">${det.type}:</span> ${det.desc} <span class="text-gray-500">(${det.area}px)</span>`;
-                    detectionsDiv.appendChild(detLine);
-                });
+                frameInfo.className = 'text-xs text-sky-400 font-semibold';
+                frameInfo.textContent = `Frame ${frameData.frame} (${frameData.time.toFixed(2)}s) - ${frameData.detections.length} detections`;
 
                 infoDiv.appendChild(frameInfo);
-                infoDiv.appendChild(detectionsDiv);
 
                 frameCard.appendChild(thumbnailImg);
                 frameCard.appendChild(infoDiv);
@@ -2321,12 +2812,35 @@
                 // Click handler to open in modal
                 frameCard.addEventListener('click', () => {
                     openDetectionModal(idx);
+                    // Update the current frame detections display
+                    updateCurrentFrameDetections(frameData.detections);
                 });
 
                 listContainer.appendChild(frameCard);
             });
 
             document.getElementById('detection-list-container').classList.remove('hidden');
+        }
+
+        function updateCurrentFrameDetections(detections) {
+            const container = document.getElementById('current-frame-detections');
+            const listDiv = document.getElementById('current-detections-list');
+
+            if (!detections || detections.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            listDiv.innerHTML = '';
+            detections.forEach(det => {
+                const detLine = document.createElement('div');
+                detLine.className = 'text-xs';
+                const colorClass = det.type.startsWith('HSV') ? 'text-green-400' : 'text-purple-400';
+                detLine.innerHTML = `<span class="${colorClass}">${det.type}:</span> ${det.desc} <span class="text-gray-500">(${det.area}px)</span>`;
+                listDiv.appendChild(detLine);
+            });
+
+            container.classList.remove('hidden');
         }
 
         function startProcessing() {
@@ -2375,11 +2889,11 @@
             
             const savedTime = video.currentTime; // Save current position
             isSeekingSuppressed = true; // Prevent slider updates
-            
-            updateStatus("Analyzing terrain colors (sampling 20 frames)...", "text-orange-400");
-            
+
+            const sampleFrames = parseInt(document.getElementById('terrain-frames').value) || 20;
+            updateStatus(`Analyzing terrain colors (sampling ${sampleFrames} frames)...`, "text-orange-400");
+
             const duration = video.duration;
-            const sampleFrames = 20;
             const frameStep = duration / sampleFrames;
             
             let hueValues = [];
@@ -2423,9 +2937,10 @@
                         
                         const filterStrength = document.getElementById('filter-strength').value;
                         const smartFilterEnabled = document.getElementById('enable-smart-filter').checked;
+                        const terrainFrames = document.getElementById('terrain-frames').value;
                         const infoEl = document.getElementById('terrain-info');
                         infoEl.innerHTML = `
-                            <strong class="${smartFilterEnabled ? 'text-orange-400' : 'text-gray-400'}">${smartFilterEnabled ? '✓ ACTIVE' : '○ INACTIVE'}: Terrain from Whole Video (20 frames)</strong><br>
+                            <strong class="${smartFilterEnabled ? 'text-orange-400' : 'text-gray-400'}">${smartFilterEnabled ? '✓ ACTIVE' : '○ INACTIVE'}: Terrain from Whole Video (${terrainFrames} frames)</strong><br>
                             <div class="pl-2 mt-1">
                             <strong>Baseline Statistics:</strong><br>
                             • Hue: ${hueMean.toFixed(0)} ± ${hueStd.toFixed(0)}σ (P25-P75: ${hueP25.toFixed(0)}-${hueP75.toFixed(0)})<br>
@@ -2436,6 +2951,10 @@
                             </div>
                         `;
                         infoEl.classList.remove('hidden');
+
+                        // Set exclusion source
+                        window.exclusionSource = 'Whole Video (' + terrainFrames + ' frames)';
+                        updateSettingsIndicator();
 
                         updateStatus("Terrain analysis complete! " + (smartFilterEnabled ? "Filter active." : "Enable Smart Filter checkbox to use."), "text-green-400");
                         
@@ -2496,6 +3015,172 @@
             sampleNextFrame();
         }
         
+        function analyzeGlobalDistribution() {
+            if (isProcessing) {
+                alert('Please pause video processing first');
+                return;
+            }
+            
+            const savedTime = video.currentTime;
+            isSeekingSuppressed = true;
+
+            const sampleFrames = parseInt(document.getElementById('global-frames').value) || 50;
+            updateStatus(`Analyzing global HSV distribution (sampling ${sampleFrames} frames)...`, "text-purple-400");
+
+            const duration = video.duration;
+            const frameStep = duration / sampleFrames;
+            
+            let hueValues = [];
+            let satValues = [];
+            let valValues = [];
+            
+            let frameIndex = 0;
+            
+            function sampleNextFrame() {
+                if (frameIndex >= sampleFrames) {
+                    // Analysis complete
+                    const restoreHandler = () => {
+                        video.removeEventListener('seeked', restoreHandler);
+                        isSeekingSuppressed = false;
+                        
+                        // Calculate comprehensive statistics
+                        const hueMean = hueValues.reduce((a, b) => a + b, 0) / hueValues.length;
+                        const hueStd = Math.sqrt(hueValues.reduce((sq, n) => sq + Math.pow(n - hueMean, 2), 0) / hueValues.length);
+                        
+                        const satMean = satValues.reduce((a, b) => a + b, 0) / satValues.length;
+                        const satStd = Math.sqrt(satValues.reduce((sq, n) => sq + Math.pow(n - satMean, 2), 0) / satValues.length);
+                        
+                        const valMean = valValues.reduce((a, b) => a + b, 0) / valValues.length;
+                        const valStd = Math.sqrt(valValues.reduce((sq, n) => sq + Math.pow(n - valMean, 2), 0) / valValues.length);
+                        
+                        // Sort for percentiles
+                        hueValues.sort((a, b) => a - b);
+                        satValues.sort((a, b) => a - b);
+                        valValues.sort((a, b) => a - b);
+                        
+                        const threshold = parseInt(document.getElementById('global-threshold').value) || 90;
+                        const percentile = threshold / 100;
+                        
+                        // Get percentile boundaries
+                        const hueMin = hueValues[Math.floor(hueValues.length * (1 - percentile) / 2)];
+                        const hueMax = hueValues[Math.floor(hueValues.length * (1 - (1 - percentile) / 2))];
+                        const satMin = satValues[Math.floor(satValues.length * (1 - percentile) / 2)];
+                        const satMax = satValues[Math.floor(satValues.length * (1 - (1 - percentile) / 2))];
+                        const valMin = valValues[Math.floor(valValues.length * (1 - percentile) / 2)];
+                        const valMax = valValues[Math.floor(valValues.length * (1 - (1 - percentile) / 2))];
+                        
+                        globalHsvDistribution = {
+                            hueMean: hueMean,
+                            hueStd: hueStd,
+                            hueMin: hueMin,
+                            hueMax: hueMax,
+                            satMean: satMean,
+                            satStd: satStd,
+                            satMin: satMin,
+                            satMax: satMax,
+                            valMean: valMean,
+                            valStd: valStd,
+                            valMin: valMin,
+                            valMax: valMax,
+                            threshold: threshold
+                        };
+                        
+                        const globalFilterEnabled = document.getElementById('enable-global-filter').checked;
+                        const stdDevs = document.getElementById('global-std').value;
+                        const infoEl = document.getElementById('global-info');
+                        infoEl.innerHTML = `
+                            <strong class="${globalFilterEnabled ? 'text-purple-400' : 'text-gray-400'}">${globalFilterEnabled ? '✓ ACTIVE' : '○ INACTIVE'}: Global Distribution (${sampleFrames} frames, ${threshold}%ile)</strong><br>
+                            <div class="pl-2 mt-1">
+                            <strong>Distribution Statistics:</strong><br>
+                            • Hue: ${hueMean.toFixed(0)} ± ${hueStd.toFixed(0)}σ (Range: ${hueMin.toFixed(0)}-${hueMax.toFixed(0)})<br>
+                            • Sat: ${satMean.toFixed(0)} ± ${satStd.toFixed(0)}σ (Range: ${satMin.toFixed(0)}-${satMax.toFixed(0)})<br>
+                            • Val: ${valMean.toFixed(0)} ± ${valStd.toFixed(0)}σ (Range: ${valMin.toFixed(0)}-${valMax.toFixed(0)})<br>
+                            • Exclusion: Within ${stdDevs}σ OR ${threshold}% distribution<br>
+                            <em class="text-yellow-300">Colors within typical ranges will be filtered</em><br>
+                            <span class="text-gray-400">To ${globalFilterEnabled ? 'disable' : 'enable'}: ${globalFilterEnabled ? 'uncheck' : 'check'} checkbox above</span>
+                            </div>
+                        `;
+                        infoEl.classList.remove('hidden');
+
+                        updateStatus("Global distribution analysis complete! " + (globalFilterEnabled ? "Filter active." : "Enable checkbox to use."), "text-green-400");
+                        
+                        if (!isProcessing) processSingleFrame();
+                    };
+                    
+                    video.addEventListener('seeked', restoreHandler, { once: true });
+                    video.currentTime = savedTime;
+                    return;
+                }
+                
+                const seekTime = frameIndex * frameStep;
+                
+                const onSeekedHandler = () => {
+                    video.removeEventListener('seeked', onSeekedHandler);
+                    
+                    try {
+                        cap.read(srcMat);
+                        cv.cvtColor(srcMat, rgbMat, cv.COLOR_RGBA2RGB);
+                        cv.cvtColor(rgbMat, hsvMat, cv.COLOR_RGB2HSV);
+                        
+                        // Sample pixels uniformly
+                        const h = hsvMat.rows;
+                        const w = hsvMat.cols;
+                        const step = 20;
+                        
+                        for (let y = 0; y < h; y += step) {
+                            for (let x = 0; x < w; x += step) {
+                                const hue = hsvMat.ucharPtr(y, x)[0];
+                                const sat = hsvMat.ucharPtr(y, x)[1];
+                                const val = hsvMat.ucharPtr(y, x)[2];
+                                
+                                // Include all pixels to build complete distribution
+                                hueValues.push(hue);
+                                satValues.push(sat);
+                                valValues.push(val);
+                            }
+                        }
+                        
+                        frameIndex++;
+                        updateStatus(`Analyzing global distribution... ${frameIndex}/${sampleFrames}`, "text-purple-400");
+                        
+                        setTimeout(sampleNextFrame, 50);
+                        
+                    } catch (err) {
+                        console.error("Error during global distribution analysis:", err);
+                        updateStatus("Error during global distribution analysis", "text-red-400");
+                        isSeekingSuppressed = false;
+                        video.currentTime = savedTime;
+                    }
+                };
+                
+                video.addEventListener('seeked', onSeekedHandler, { once: true });
+                video.currentTime = Math.min(seekTime, duration - 0.1);
+            }
+            
+            sampleNextFrame();
+        }
+        
+        function isTypicalColor(hue, sat, val) {
+            if (!globalHsvDistribution) return false;
+            
+            const stdDevs = parseFloat(document.getElementById('global-std').value) || 2.0;
+            const dist = globalHsvDistribution;
+            
+            // Check if within std deviations
+            const hueInRange = Math.abs(hue - dist.hueMean) <= (stdDevs * dist.hueStd);
+            const satInRange = Math.abs(sat - dist.satMean) <= (stdDevs * dist.satStd);
+            const valInRange = Math.abs(val - dist.valMean) <= (stdDevs * dist.valStd);
+            
+            // Also check if within percentile range
+            const hueInPercentile = hue >= dist.hueMin && hue <= dist.hueMax;
+            const satInPercentile = sat >= dist.satMin && sat <= dist.satMax;
+            const valInPercentile = val >= dist.valMin && val <= dist.valMax;
+            
+            // Exclude if within EITHER std dev range OR percentile range (aggressive filtering)
+            return (hueInRange && satInRange && valInRange) || 
+                   (hueInPercentile && satInPercentile && valInPercentile);
+        }
+        
         function isExcludedColor(hue) {
             for (let range of excludedColorRanges) {
                 if (hue >= range.min && hue <= range.max) {
@@ -2505,25 +3190,51 @@
             return false;
         }
 
+        function isNaturalColor(hue, sat, val) {
+            // Filter out very low saturation colors (grays, whites, blacks)
+            // These are almost never interesting anomalies
+            if (sat < 30 || val < 30 || val > 240) {
+                return true;
+            }
+
+            // Common natural terrain colors with low saturation
+            // Browns/Earth tones: Hue 10-30, low-medium saturation
+            if (hue >= 10 && hue <= 30 && sat < 120) {
+                return true;
+            }
+
+            // Greens (vegetation): Hue 30-85, low-medium saturation
+            if (hue >= 30 && hue <= 85 && sat < 100) {
+                return true;
+            }
+
+            // Darker greens/olives: Hue 85-100, low saturation
+            if (hue >= 85 && hue <= 100 && sat < 80) {
+                return true;
+            }
+
+            return false;
+        }
+
         function isTerrainColor(hue, sat) {
             if (!terrainBaseline || !useSmartFilter) return false;
-            
+
             // Get filter strength (lower = more aggressive)
             const filterStrength = parseFloat(document.getElementById('filter-strength').value);
-            
+
             // Check if this hue/sat falls within typical terrain ranges
             const hueInRange = Math.abs(hue - terrainBaseline.hueMean) < (terrainBaseline.hueStd * filterStrength);
             const satInRange = Math.abs(sat - terrainBaseline.satMean) < (terrainBaseline.satStd * filterStrength);
-            
+
             // Percentile-based check (more conservative)
             const huePercentileMargin = (terrainBaseline.hueP75 - terrainBaseline.hueP25) * (filterStrength / 2.0);
             const satPercentileMargin = (terrainBaseline.satP75 - terrainBaseline.satP25) * (filterStrength / 2.0);
-            
-            const hueInP25P75 = hue >= (terrainBaseline.hueP25 - huePercentileMargin) && 
+
+            const hueInP25P75 = hue >= (terrainBaseline.hueP25 - huePercentileMargin) &&
                                hue <= (terrainBaseline.hueP75 + huePercentileMargin);
-            const satInP25P75 = sat >= (terrainBaseline.satP25 - satPercentileMargin) && 
+            const satInP25P75 = sat >= (terrainBaseline.satP25 - satPercentileMargin) &&
                                sat <= (terrainBaseline.satP75 + satPercentileMargin);
-            
+
             // Filter out if BOTH hue and sat match terrain
             // At strength 1.5: moderate filtering
             // At strength 0.5: very aggressive (only extreme outliers pass)
@@ -2568,22 +3279,11 @@
                 if (enableHsv) {
                     // Check which HSV options are enabled
                     const hsvOptions = [
-                        { prefix: 'hsv1', color: [0, 255, 0, 255], enabled: document.getElementById('hsv1-enabled')?.checked },
-                        { prefix: 'hsv2', color: [255, 0, 255, 255], enabled: document.getElementById('hsv2-enabled')?.checked },
-                        { prefix: 'hsv3', color: [0, 255, 255, 255], enabled: document.getElementById('hsv3-enabled')?.checked }
+                        { prefix: 'hsv1', color: [0, 255, 0, 255], enabled: document.getElementById('hsv1-enabled')?.checked, mode: document.querySelector('input[name="hsv1-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv2', color: [255, 0, 255, 255], enabled: document.getElementById('hsv2-enabled')?.checked, mode: document.querySelector('input[name="hsv2-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv3', color: [0, 255, 255, 255], enabled: document.getElementById('hsv3-enabled')?.checked, mode: document.querySelector('input[name="hsv3-mode"]:checked')?.value || 'include' },
+                        { prefix: 'hsv4', color: [255, 255, 0, 255], enabled: document.getElementById('hsv4-enabled')?.checked, mode: document.querySelector('input[name="hsv4-mode"]:checked')?.value || 'include' }
                     ];
-
-                    // Get exclusion range if enabled
-                    const exclusionEnabled = document.getElementById('hsv-exclusion-enabled')?.checked;
-                    let exHMin, exHMax, exSMin, exSMax, exVMin, exVMax;
-                    if (exclusionEnabled) {
-                        exHMin = parseInt(document.getElementById('hsv-ex-h-min')?.value || 0);
-                        exHMax = parseInt(document.getElementById('hsv-ex-h-max')?.value || 179);
-                        exSMin = parseInt(document.getElementById('hsv-ex-s-min')?.value || 0);
-                        exSMax = parseInt(document.getElementById('hsv-ex-s-max')?.value || 255);
-                        exVMin = parseInt(document.getElementById('hsv-ex-v-min')?.value || 0);
-                        exVMax = parseInt(document.getElementById('hsv-ex-v-max')?.value || 255);
-                    }
 
                     // Process each enabled HSV option
                     for (const option of hsvOptions) {
@@ -2606,6 +3306,11 @@
 
                         lowMat.delete();
                         highMat.delete();
+
+                        // If exclude mode, invert the mask
+                        if (option.mode === 'exclude') {
+                            cv.bitwise_not(optionMask, optionMask);
+                        }
 
                         // Properly clean up old contours before creating new ones
                         if (contours) {
@@ -2636,25 +3341,14 @@
                                     const detSat = hsvMat.ucharPtr(cy, cx)[1];
                                     const detVal = hsvMat.ucharPtr(cy, cx)[2];
 
-                                    // Check if color is in exclusion range
-                                    if (exclusionEnabled) {
-                                        let inExclusion = false;
-                                        if (exHMin <= exHMax) {
-                                            inExclusion = (detHue >= exHMin && detHue <= exHMax);
-                                        } else {
-                                            inExclusion = (detHue >= exHMin || detHue <= exHMax);
-                                        }
-                                        inExclusion = inExclusion &&
-                                                     (detSat >= exSMin && detSat <= exSMax) &&
-                                                     (detVal >= exVMin && detVal <= exVMax);
-                                        if (inExclusion) skipDetection = true;
-                                    }
-
                                     // Check if color is excluded (old system)
                                     if (isExcludedColor(detHue)) skipDetection = true;
 
                                     // Smart filter: skip if it looks like terrain
                                     if (useSmartFilter && isTerrainColor(detHue, detSat)) skipDetection = true;
+                                    
+                                    // Global filter: skip if within typical distribution
+                                    if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) skipDetection = true;
                                 }
 
                                 if (skipDetection) continue;
@@ -2677,6 +3371,7 @@
 
                         optionMask.delete();
                     }
+
                 }
 
                 // High Saturation Detection
@@ -2722,12 +3417,16 @@
                             if (cx < hsvMat.cols && cy < hsvMat.rows) {
                                 const detHue = hsvMat.ucharPtr(cy, cx)[0];
                                 const detSat = hsvMat.ucharPtr(cy, cx)[1];
+                                const detVal = hsvMat.ucharPtr(cy, cx)[2];
 
                                 // Check if color is excluded
                                 if (isExcludedColor(detHue)) continue;
 
                                 // Smart filter check
                                 if (useSmartFilter && isTerrainColor(detHue, detSat)) continue;
+                                
+                                // Global filter check
+                                if (enableGlobalFilter && isTypicalColor(detHue, detSat, detVal)) continue;
                             }
 
                             satCount++;
@@ -2749,10 +3448,6 @@
 
                 cv.imshow('canvas-out', outputFrame);
                 outputFrame.delete();
-
-                document.getElementById('hsv-count').textContent = hsvCount;
-                document.getElementById('sat-count').textContent = satCount;
-                document.getElementById('total-count').textContent = hsvCount + satCount;
 
             } catch (err) {
                 console.error("OpenCV processing error:", err);
