@@ -1939,21 +1939,39 @@
                         console.log(`Frame ${frameNum}: Found ${dets.length} detections`);
 
                         // Capture thumbnail with detections drawn
-                        let thumbnail = null;
                         if (dets.length > 0) {
-                            // Create a display copy - clone srcMat like processSingleFrame does
+                            // Draw detections on a copy
                             let displayMat = srcMat.clone();
 
-                            dets.forEach(det => {
-                                let p1 = new cv.Point(det.rect.x, det.rect.y);
-                                let p2 = new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height);
+                            console.log(`Creating thumbnail for frame ${frameNum} with ${dets.length} detections`);
+                            console.log(`srcMat: ${srcMat.cols}x${srcMat.rows}, displayMat: ${displayMat.cols}x${displayMat.rows}`);
 
-                                if (det.type === 'HSV') {
-                                    // Green color - same format as processSingleFrame
-                                    cv.rectangle(displayMat, p1, p2, [0, 255, 0, 255], 2, cv.LINE_AA, 0);
+                            dets.forEach((det, i) => {
+                                console.log(`  Det ${i}: ${det.type} at (${det.rect.x},${det.rect.y}) size ${det.rect.width}x${det.rect.height}`);
+
+                                // Handle HSV1, HSV2, HSV3, or just HSV
+                                if (det.type && det.type.startsWith('HSV')) {
+                                    cv.rectangle(displayMat,
+                                        new cv.Point(det.rect.x, det.rect.y),
+                                        new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                                        [0, 255, 0, 255], 2, cv.LINE_AA, 0);
+
+                                    // Add label with detection details
+                                    const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                                    cv.putText(displayMat, label,
+                                        new cv.Point(det.rect.x, det.rect.y - 5),
+                                        cv.FONT_HERSHEY_SIMPLEX, 0.4, [0, 255, 0, 255], 1, cv.LINE_AA);
                                 } else if (det.type === 'Sat') {
-                                    // Magenta color - same format as processSingleFrame
-                                    cv.rectangle(displayMat, p1, p2, [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+                                    cv.rectangle(displayMat,
+                                        new cv.Point(det.rect.x, det.rect.y),
+                                        new cv.Point(det.rect.x + det.rect.width, det.rect.y + det.rect.height),
+                                        [255, 0, 255, 255], 2, cv.LINE_AA, 0);
+
+                                    // Add label with detection details
+                                    const label = `${det.type}: ${det.desc} (${det.area}px)`;
+                                    cv.putText(displayMat, label,
+                                        new cv.Point(det.rect.x, det.rect.y - 5),
+                                        cv.FONT_HERSHEY_SIMPLEX, 0.4, [255, 0, 255, 255], 1, cv.LINE_AA);
                                 }
                             });
 
@@ -1962,7 +1980,10 @@
                             tempCanvas.width = displayMat.cols;
                             tempCanvas.height = displayMat.rows;
                             cv.imshow(tempCanvas, displayMat);
-                            thumbnail = tempCanvas.toDataURL('image/jpeg', 0.7);
+                            const thumbnail = tempCanvas.toDataURL('image/jpeg', 0.7);
+
+                            console.log(`Thumbnail created: ${thumbnail.substring(0, 50)}... (${thumbnail.length} chars)`);
+
                             displayMat.delete();
 
                             batchDetections.push({
