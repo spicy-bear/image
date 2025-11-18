@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 SAR Interactive Color Detector with Auto-Analysis
 Runs full color analysis on upload, then allows a full-video
