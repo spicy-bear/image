@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Process Video Detector</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady();"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-black text-gray-300 font-sans min-h-screen flex flex-col">
+
+    <!-- Modal for Fullscreen Preview -->
+    <div id="canvas-modal" class="hidden fixed inset-0 bg-black bg-opacity-95 z-50 flex flex-col items-center justify-center p-4">
+        <button id="close-modal" class="absolute top-4 right-6 text-white text-4xl hover:text-gray-400 transition-colors">&times;</button>
+        
+        <div class="flex items-center justify-between w-full max-w-7xl px-4 absolute top-1/2 transform -translate-y-1/2 pointer-events-none">
+            <button id="modal-prev" class="pointer-events-auto text-white text-6xl hover:text-gray-400 transition-colors bg-black bg-opacity-50 rounded-full w-16 h-16 flex items-center justify-center pb-2">‹</button>
+            <button id="modal-next" class="pointer-events-auto text-white text-6xl hover:text-gray-400 transition-colors bg-black bg-opacity-50 rounded-full w-16 h-16 flex items-center justify-center pb-2">›</button>
+        </div>
+
+        <div class="relative w-full max-w-6xl max-h-[85vh] flex items-center justify-center">
+            <img id="modal-image" class="max-w-full max-h-full object-contain border border-gray-800 shadow-2xl" />
+        </div>
+        <div id="modal-info" class="mt-4 text-gray-400 font-mono text-sm bg-gray-900 px-4 py-2 rounded border border-gray-800"></div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-7xl mx-auto p-6">
+        
+        <!-- Header -->
+        <header class="mb-8 border-b border-gray-800 pb-4 flex justify-between items-end">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-100 tracking-tight">Detector</h1>
+                <p class="text-xs text-gray-500 mt-1"></p>
+            </div>
+            <div id="opencv-status" class="text-xs font-mono flex items-center gap-2">
+                <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                Engine Loading...
+            </div>
+        </header>
+
+        <!-- Loading Screen (Initial) -->
+        <div id="loader" class="fixed inset-0 bg-black z-40 flex flex-col items-center justify-center">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-700 h-12 w-12 mb-4"></div>
+            <h2 class="text-center text-xl font-semibold text-gray-400">Initializing OpenCV...</h2>
+        </div>
+
+        <!-- Main App Area -->
+        <div id="app-content" class="hidden space-y-6">
+            
+            <!-- Input Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Upload & Settings Card -->
+                <div class="lg:col-span-4 bg-gray-900 border border-gray-800 rounded-lg p-6 h-fit">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Input</h2>
+                    
+                    <div class="space-y-4">
+                        <!-- File Input -->
+                        <div class="relative group">
+                            <label for="video-input" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-700 border-dashed rounded-lg cursor-pointer bg-gray-800 hover:bg-gray-700 transition-colors">
+                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <svg class="w-8 h-8 mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    <p class="text-sm text-gray-400"><span class="font-semibold">Click to upload</span> Video and Log files</p>
+                                </div>
+                                <input id="video-input" type="file" accept="video/*, .srt" class="hidden" multiple />
+                            </label>
+                        </div>
+
+                        <!-- Settings -->
+                        <div>
+                            <label class="text-xs text-gray-500 font-semibold mb-2 block">Sample Rate (Frames)</label>
+                            <input type="number" id="frame-sample-rate" min="1" max="240" value="240" class="w-full bg-black border border-gray-700 text-white text-sm rounded px-3 py-2 focus:border-gray-500 focus:outline-none transition-colors">
+                            <p class="text-[10px] text-gray-600 mt-1">Lower = More accurate, Higher = Faster</p>
+                        </div>
+
+                        <!-- Stats Display -->
+                        <div id="video-stats" class="hidden pt-4 border-t border-gray-800">
+                            <div class="grid grid-cols-3 gap-2 text-center">
+                                <div class="bg-gray-950 rounded p-2">
+                                    <div class="text-[10px] text-gray-500">Duration</div>
+                                    <div id="stat-duration" class="text-sm font-mono text-gray-300">-</div>
+                                </div>
+                                <div class="bg-gray-950 rounded p-2">
+                                    <div class="text-[10px] text-gray-500">FPS</div>
+                                    <div id="stat-fps" class="text-sm font-mono text-gray-300">-</div>
+                                </div>
+                                <div class="bg-gray-950 rounded p-2">
+                                    <div class="text-[10px] text-gray-500">Frames</div>
+                                    <div id="stat-frames" class="text-sm font-mono text-gray-300">-</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2 text-center mt-2">
+                                <div class="bg-gray-950 rounded p-2 col-span-1">
+                                    <div class="text-[10px] text-gray-500">Telemetry Loaded</div>
+                                    <div id="stat-telemetry" class="text-sm font-bold text-red-500">No</div>
+                                </div>
+                                <div class="bg-gray-950 rounded p-2 col-span-2">
+                                    <div class="text-[10px] text-gray-500">Resolution</div>
+                                    <div id="stat-resolution" class="text-sm font-mono text-gray-300">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Status Card -->
+                <div class="lg:col-span-8 bg-gray-900 border border-gray-800 rounded-lg p-6 flex flex-col justify-center relative overflow-hidden">
+                    <!-- Placeholder State -->
+                    <div id="status-placeholder" class="text-center text-gray-600">
+                        <p class="text-lg">Waiting for video...</p>
+                        <p class="text-sm">Upload to start automatic processing.</p>
+                    </div>
+
+                    <!-- Active State -->
+                    <div id="processing-container" class="hidden w-full">
+                        <div class="flex justify-between items-end mb-2">
+                            <h3 id="process-stage" class="text-lg font-medium text-white">Initializing...</h3>
+                            <span id="process-percent" class="text-2xl font-bold text-gray-500">0%</span>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-black rounded-full h-4 mb-4 overflow-hidden border border-gray-800">
+                            <div id="progress-bar" class="bg-gray-100 h-4 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+                        </div>
+
+                        <div class="flex justify-between text-xs text-gray-500 font-mono">
+                            <span id="process-detail">Preparing engine...</span>
+                            <span id="detection-counter">Detections: 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Video Element for Processing -->
+                    <video id="video-in" class="hidden" muted playsinline></video>
+                    <!-- Hidden Canvas for Processing -->
+                    <canvas id="process-canvas" class="hidden"></canvas>
+                </div>
+            </div>
+
+            <!-- New: Color Analysis Chart -->
+            <div id="analysis-section" class="lg:col-span-12 bg-gray-900 border border-gray-800 rounded-lg p-6 hidden">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Video Color Profile</h2>
+                <div id="chart-stats-container" class="space-y-4">
+                    <canvas id="hue-histogram" class="w-full h-64 bg-black rounded border border-gray-700"></canvas>
+                    <div id="color-stats" class="grid grid-cols-2 gap-4 text-sm font-mono">
+                        <!-- Stats inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Grid -->
+            <div id="results-section" class="hidden">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Detection Results</h2>
+                    <span id="total-results" class="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-800">0 Frames Found</span>
+                </div>
+                
+                <div id="results-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    <!-- Result items will be injected here -->
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <script>
+        // --- Configuration ---
+        const TARGET_BACKGROUND_SUPPRESSION = 0.999; 
+        const SIGMA_FLOOR = 3.0;
+        const SAT_BINS = 32;
+        const VAL_BINS = 32;
+        const MAX_DETECTIONS_PER_FRAME = 5;
+        
+        // RELATIVE_AREA_THRESHOLD is the lowest acceptable size for a pixel cluster at 1x zoom, relative to total pixels.
+        const RELATIVE_AREA_THRESHOLD = 0.0001; 
+        
+        // --- State ---
+        let video = document.getElementById('video-in');
+        let cap = null;
+        let srcMat = null;
+        let hsvMat = null;
+        let maskMat = null;
+        
+        let globalSatStats = { mean: 128, std: 60 };
+        let globalValStats = { mean: 128, std: 60 };
+        let globalColorFrequencies = new Map();
+        let commonColorKeys = new Set();
+        
+        let detections = [];
+        let isProcessing = false;
+        const fps = 30; 
+        
+        let telemetryMap = new Map();
+        let fileQueue = [];
+        
+        // --- Initialization ---
+        function onOpenCvReady() {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('app-content').classList.remove('hidden');
+            
+            const statusEl = document.getElementById('opencv-status');
+            statusEl.innerHTML = 'Engine Ready.';
+            statusEl.classList.add('text-green-500');
+
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            const input = document.getElementById('video-input');
+            
+            input.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length === 0) return;
+
+                // 1. Reset all global state and UI
+                resetState(true); 
+                
+                // 2. Identify video files and pair them with SRT content if available
+                const videoFiles = files.filter(f => f.type.startsWith('video/'));
+                const srtFiles = files.filter(f => f.name.toLowerCase().endsWith('.srt'));
+                
+                if (videoFiles.length === 0) {
+                    alert("Please upload at least one video file.");
+                    return;
+                }
+                
+                // Read all SRT files once
+                const srtContents = await Promise.all(srtFiles.map(file => {
+                    return new Promise(resolve => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve({ name: file.name, content: e.target.result });
+                        reader.readAsText(file);
+                    });
+                }));
+
+                // Parse and merge all telemetry data upfront
+                let combinedTelemetryMap = new Map();
+                srtContents.forEach(srt => parseSRTFile(srt.content, combinedTelemetryMap));
+                telemetryMap = combinedTelemetryMap;
+
+                // 3. Populate the processing queue
+                fileQueue = videoFiles.map(videoFile => ({
+                    videoFile: videoFile,
+                    telemetryLoaded: combinedTelemetryMap.size > 0
+                }));
+                
+                // 4. Start processing the queue
+                document.getElementById('status-placeholder').classList.add('hidden');
+                document.getElementById('processing-container').classList.remove('hidden');
+                document.getElementById('analysis-section').classList.add('hidden'); 
+                
+                processNextVideoInQueue();
+            });
+
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+            document.getElementById('modal-prev').addEventListener('click', prevModal);
+            document.getElementById('modal-next').addEventListener('click', nextModal);
+            document.addEventListener('keydown', (e) => {
+                if(document.getElementById('canvas-modal').classList.contains('hidden')) return;
+                if(e.key === 'Escape') closeModal();
+                if(e.key === 'ArrowLeft') prevModal();
+                if(e.key === 'ArrowRight') nextModal();
+            });
+        }
+        
+        async function processNextVideoInQueue() {
+            if (fileQueue.length === 0) {
+                updateProgress('Complete', 100, 'All videos processed.');
+                return;
+            }
+
+            const currentJob = fileQueue.shift();
+            const videoFile = currentJob.videoFile;
+            
+            // 1. Reset per-video state (but keep global telemetryMap)
+            resetState(false);
+
+            updateProgress('Loading Video', 0, `Loading ${videoFile.name}...`);
+            
+            const videoUrl = URL.createObjectURL(videoFile);
+            video.src = videoUrl;
+
+            video.onloadedmetadata = async () => {
+                try {
+                    displayVideoStats(videoFile.name, video.videoWidth, video.videoHeight, currentJob.telemetryLoaded);
+                    
+                    initOpenCV();
+
+                    updateProgress('Analyzing Colors', 5, `[${videoFile.name}] Building 3D color profile...`);
+                    await analyzeGlobal3DHistogram();
+                    drawGlobalHueHistogram(); 
+                    document.getElementById('analysis-section').classList.remove('hidden');
+
+                    updateProgress('Scanning Video', 20, `[${videoFile.name}] Isolating rare objects...`);
+                    await scanVideoForAnomalies(videoFile.name);
+
+                    finishProcessing(videoFile.name);
+                    
+                } catch (err) {
+                    console.error(`Error processing ${videoFile.name}:`, err);
+                    updateProgress('Error', 0, `Processing failed for ${videoFile.name}.`);
+                }
+
+                // Start the next video
+                processNextVideoInQueue();
+            };
+        }
+
+
+        function resetState(resetUI) {
+            // Reset for the *current* video being processed
+            globalColorFrequencies = new Map();
+            commonColorKeys = new Set();
+            globalSatStats = { mean: 128, std: 60 };
+            globalValStats = { mean: 128, std: 60 };
+
+            if (srcMat) { srcMat.delete(); srcMat = null; }
+            if (hsvMat) { hsvMat.delete(); hsvMat = null; }
+            if (maskMat) { maskMat.delete(); maskMat = null; }
+            if (cap) { delete cap; cap = null; } 
+            
+            if (resetUI) {
+                // Full reset for a new batch of files
+                detections = [];
+                telemetryMap = new Map(); 
+                document.getElementById('results-grid').innerHTML = '';
+                document.getElementById('results-section').classList.add('hidden');
+                document.getElementById('detection-counter').innerText = 'Detections: 0';
+                document.getElementById('total-results').innerText = '0 Frames Found';
+                document.getElementById('analysis-section').classList.add('hidden');
+                document.getElementById('video-stats').classList.add('hidden');
+            }
+        }
+
+        function displayVideoStats(fileName, width, height, telemetryLoaded) {
+            const duration = video.duration;
+            const totalFrames = Math.floor(duration * fps);
+            
+            document.getElementById('video-stats').classList.remove('hidden');
+            document.getElementById('stat-duration').innerText = duration.toFixed(1) + 's';
+            document.getElementById('stat-fps').innerText = fps;
+            document.getElementById('stat-frames').innerText = totalFrames;
+            document.getElementById('stat-resolution').innerText = `${width}x${height}`;
+            
+            const telemetryEl = document.getElementById('stat-telemetry');
+            if (telemetryLoaded) {
+                telemetryEl.textContent = 'Yes';
+                telemetryEl.classList.replace('text-red-500', 'text-green-500');
+            } else {
+                telemetryEl.textContent = 'No';
+                telemetryEl.classList.replace('text-green-500', 'text-red-500');
+            }
+        }
+        
+        function parseSRTFile(srtContent, telemetryTargetMap) {
+            const specificDJIRegex = /FrameCnt: (?<frameCnt>\d+).*?\[dzoom_ratio: (?<zoom>[\d.]+).*?latitude: (?<lat>[\d.-]+)\] \[longitude: (?<lon>[\d.-]+)\] \[rel_alt: (?<alt>[\d.-]+).*?gb_pitch: (?<pitch>[\d.-]+)/gs;
+            
+            let match;
+            while ((match = specificDJIRegex.exec(srtContent)) !== null) {
+                const { groups } = match;
+                const frameCnt = parseInt(groups.frameCnt);
+                const zoom = parseFloat(groups.zoom);
+                const lat = parseFloat(groups.lat);
+                const lon = parseFloat(groups.lon);
+                const alt = parseFloat(groups.alt);
+                const pitch = parseFloat(groups.pitch);
+
+                if (!isNaN(frameCnt) && !isNaN(lat) && !isNaN(lon)) {
+                    telemetryTargetMap.set(frameCnt, {
+                        lat: lat.toFixed(6),
+                        lon: lon.toFixed(6),
+                        alt: alt.toFixed(1),
+                        zoom: zoom.toFixed(2),
+                        pitch: pitch.toFixed(1)
+                    });
+                }
+            }
+        }
+        
+        // --- Automation Pipeline ---
+
+        function initOpenCV() {
+            const width = video.videoWidth;
+            const height = video.videoHeight;
+            
+            video.width = width;
+            video.height = height;
+            
+            const canvas = document.getElementById('process-canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            srcMat = new cv.Mat(height, width, cv.CV_8UC4);
+            hsvMat = new cv.Mat(height, width, cv.CV_8UC3);
+            maskMat = new cv.Mat(height, width, cv.CV_8UC1);
+            cap = new cv.VideoCapture(video);
+        }
+
+        // --- Step 1: Global 3D Histogram Analysis ---
+        function analyzeGlobal3DHistogram() {
+            return new Promise((resolve, reject) => {
+                const sampleCount = 40; 
+                const duration = video.duration;
+                const step = duration / sampleCount;
+                
+                let colorFrequency = new Map();
+                let totalValidPixels = 0;
+                let count = 0;
+                
+                let satValues = [];
+                let valValues = [];
+
+                video.currentTime = 0;
+
+                const onSeeked = () => {
+                    if (count >= sampleCount) {
+                        video.removeEventListener('seeked', onSeeked);
+                        
+                        globalSatStats = calculateStats(satValues);
+                        globalValStats = calculateStats(valValues);
+                        
+                        globalColorFrequencies = colorFrequency;
+                        calculateCommonColorKeys(colorFrequency, totalValidPixels);
+                        
+                        resolve();
+                        return;
+                    }
+
+                    try {
+                        cap.read(srcMat);
+                        if (!srcMat.empty()) {
+                            cv.cvtColor(srcMat, hsvMat, cv.COLOR_RGBA2RGB);
+                            cv.cvtColor(hsvMat, hsvMat, cv.COLOR_RGB2HSV);
+                            
+                            const rows = hsvMat.rows;
+                            const cols = hsvMat.cols;
+                            const stride = 10; 
+
+                            for(let y=0; y<rows; y+=stride) {
+                                for(let x=0; x<cols; x+=stride) {
+                                    const pixel = hsvMat.ucharPtr(y, x);
+                                    const h = pixel[0];
+                                    const s = pixel[1];
+                                    const v = pixel[2];
+                                    
+                                    satValues.push(s);
+                                    valValues.push(v);
+                                    
+                                    const sBin = Math.floor(s / (256 / SAT_BINS));
+                                    const vBin = Math.floor(v / (256 / VAL_BINS));
+                                    
+                                    const key = (h * SAT_BINS * VAL_BINS) + (sBin * VAL_BINS) + vBin;
+                                    colorFrequency.set(key, (colorFrequency.get(key) || 0) + 1);
+                                    totalValidPixels++;
+                                }
+                            }
+                        }
+                    } catch(e) { console.warn("Frame skip", e); }
+
+                    count++;
+                    const videoName = fileQueue[0]?.videoFile.name || 'Video';
+                    updateProgress('Analyzing Colors', 5 + (count/sampleCount * 15), `[${videoName}] Learning profile ${count}/${sampleCount}`);
+                    
+                    if (count < sampleCount) {
+                        video.currentTime = Math.min(duration - 0.1, count * step);
+                    } else {
+                        video.currentTime = 0; 
+                    }
+                };
+
+                video.addEventListener('seeked', onSeeked);
+                video.currentTime = 0.1; 
+            });
+        }
+
+        function calculateCommonColorKeys(freqMap, totalPixels) {
+            const sortedColors = Array.from(freqMap.entries()).sort((a, b) => b[1] - a[1]);
+            
+            const threshold = totalPixels * TARGET_BACKGROUND_SUPPRESSION;
+            let sum = 0;
+            
+            commonColorKeys = new Set();
+            
+            for (let [key, count] of sortedColors) {
+                sum += count;
+                commonColorKeys.add(key);
+                if (sum >= threshold) break;
+            }
+        }
+
+        // Helper function for statistics
+        function calculateStats(data) {
+            if (data.length === 0) return { mean: 0, std: 0 };
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            const std = Math.sqrt(data.reduce((sq, n) => sq + Math.pow(n - mean, 2), 0) / data.length);
+            return { mean, std };
+        }
+        
+        function hsvToRgb(h, s, v) {
+            h = h * 2; 
+            s = s / 255;
+            v = v / 255;
+            
+            const c = v * s;
+            const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+            const m = v - c;
+            
+            let r, g, b;
+            if (h < 60) { r = c; g = x; b = 0; }
+            else if (h < 120) { r = x; g = c; b = 0; }
+            else if (h < 180) { r = 0; g = c; b = x; }
+            else if (h < 240) { r = 0; g = x; b = c; }
+            else if (h < 300) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            
+            return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+        }
+
+        function drawGlobalHueHistogram() {
+            const canvas = document.getElementById('hue-histogram');
+            const ctx = canvas.getContext('2d');
+            
+            const WIDTH = 600; 
+            const HEIGHT = 200;
+            canvas.width = WIDTH;
+            canvas.height = HEIGHT;
+            
+            ctx.clearRect(0, 0, WIDTH, HEIGHT);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            const hueCounts = new Array(180).fill(0);
+            let maxCount = 0;
+            
+            const totalPixels = Array.from(globalColorFrequencies.values()).reduce((a, b) => a + b, 0);
+
+            for (const [key, count] of globalColorFrequencies.entries()) {
+                const h = Math.floor(key / (SAT_BINS * VAL_BINS));
+                hueCounts[h] += count;
+                if (hueCounts[h] > maxCount) {
+                    maxCount = hueCounts[h];
+                }
+            }
+            
+            if (maxCount === 0) return;
+
+            const barWidth = WIDTH / 180;
+            const PADDING = 10;
+            const CHART_HEIGHT = HEIGHT - PADDING * 2;
+            
+            for (let h = 0; h < 180; h++) {
+                const barHeight = (hueCounts[h] / maxCount) * CHART_HEIGHT;
+                
+                const [r, g, b] = hsvToRgb(h, 255, 255);
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                
+                ctx.fillRect(h * barWidth, HEIGHT - PADDING - barHeight, barWidth, barHeight);
+            }
+
+            ctx.fillStyle = '#4b5563';
+            ctx.font = '10px monospace';
+            
+            ctx.fillText('0° (Red)', 0, HEIGHT - 1);
+            ctx.fillText('90° (Green)', WIDTH / 2 - 20, HEIGHT - 1);
+            ctx.fillText('179° (Red)', WIDTH - 40, HEIGHT - 1);
+
+            ctx.fillText('Max Count', 0, PADDING - 2);
+            ctx.fillText('0', 0, HEIGHT - PADDING + 8);
+            
+            const minSatDynamic = Math.round(globalSatStats.mean - globalSatStats.std * SIGMA_FLOOR);
+            const minValDynamic = Math.round(globalValStats.mean - globalValStats.std * SIGMA_FLOOR);
+            const suppressionPercent = (TARGET_BACKGROUND_SUPPRESSION * 100).toFixed(2);
+
+            document.getElementById('color-stats').innerHTML = `
+                <div class="p-3 bg-gray-800 rounded">
+                    <div class="text-xs text-gray-500">Background Suppression</div>
+                    <div class="text-lg font-bold text-sky-400">${suppressionPercent}%</div>
+                    <div class="text-xs text-gray-400">Ignores ${suppressionPercent}% of common H-S-V combinations.</div>
+                </div>
+                <div class="p-3 bg-gray-800 rounded">
+                    <div class="text-xs text-gray-500">Dynamic Noise Floor</div>
+                    <div class="text-lg font-bold text-orange-400">S < ${minSatDynamic} / V < ${minValDynamic}</div>
+                    <div class="text-xs text-gray-400">Rejects dull/dark pixels based on video mean & $\\pm${SIGMA_FLOOR}\\sigma$ limit.</div>
+                </div>
+                <div class="col-span-2 p-3 bg-gray-800 rounded">
+                    <div class="text-xs text-gray-500">Total Pixels Sampled</div>
+                    <div class="text-lg font-bold text-gray-100">${totalPixels.toLocaleString()}</div>
+                    <div class="text-xs text-gray-400">Profile built from ${totalPixels.toLocaleString()} sampled pixels across 40 frames.</div>
+                </div>
+            `;
+        }
+
+
+        // --- Step 2: Detection Scan ---
+        function scanVideoForAnomalies(videoName) {
+            return new Promise((resolve, reject) => {
+                const sampleRate = parseInt(document.getElementById('frame-sample-rate').value) || 10;
+                const duration = video.duration;
+                const totalFrames = Math.floor(duration * fps);
+                const totalSteps = Math.floor(totalFrames / sampleRate);
+                
+                let stepIndex = 0;
+                let detectionCount = 0;
+
+                video.currentTime = 0;
+
+                const onSeeked = () => {
+                    if (stepIndex >= totalSteps) {
+                        video.removeEventListener('seeked', onSeeked);
+                        resolve();
+                        return;
+                    }
+                    
+                    const currentFrameNum = stepIndex * sampleRate;
+
+                    try {
+                        cap.read(srcMat);
+                        if (!srcMat.empty()) {
+                            const results = detectInFrame(currentFrameNum, videoName);
+                            
+                            if (results.found) {
+                                detectionCount++;
+                                addResultToGrid(results, currentFrameNum, video.currentTime, videoName);
+                                document.getElementById('detection-counter').innerText = `Detections: ${detectionCount}`;
+                            }
+                        }
+                    } catch(e) { console.warn("Scan error", e); }
+
+                    stepIndex++;
+                    const percentage = 20 + (stepIndex / totalSteps * 80); 
+                    updateProgress('Scanning Video', percentage, `[${videoName}] Frame ${currentFrameNum}/${totalFrames}`);
+
+                    if (stepIndex < totalSteps) {
+                        const nextTime = (stepIndex * sampleRate) / fps;
+                        video.currentTime = Math.min(duration - 0.1, nextTime);
+                    } else {
+                        video.currentTime = 0; 
+                    }
+                };
+
+                video.addEventListener('seeked', onSeeked);
+                video.currentTime = 0;
+            });
+        }
+        
+        function calculateAnomalyScore(candidate, arMean, rectMean, areaMean, areaStd, rarityThresholdScore) {
+            let score = 0;
+
+            // 1. Color Rarity Score (S_rarity)
+            const colorKey = candidate.colorKey;
+            const frequency = globalColorFrequencies.get(colorKey) || 1;
+            const totalPixels = Array.from(globalColorFrequencies.values()).reduce((a, b) => a + b, 0);
+            const S_rarity = Math.log(totalPixels / frequency) * 10;
+            score += S_rarity; 
+
+            // 2. Rectangularity Score (S_rect) - Favors human-made shapes
+            const rectangularityTarget = 1.0;
+            const noiseDifference = rectangularityTarget - rectMean; 
+            const S_rect = Math.max(0, candidate.rectangularity - (rectMean - noiseDifference)) * 20;
+            score += S_rect;
+
+            // 3. Size Score (S_size) - Penalize objects that are severe size outliers in the noise profile
+            const sizeZScore = areaStd === 0 ? 0 : Math.abs(candidate.area - areaMean) / areaStd;
+            let S_size = 5; // Base score for average size object
+            
+            // Penalize objects more than 3 Sigma away from the mean noise size
+            if (sizeZScore > 3) {
+                S_size -= Math.pow(sizeZScore - 3, 2) * 5;
+            } 
+            
+            // Apply size score
+            score += S_size;
+            
+            // --- Rarity Forgiveness Correction (Remove Size Penalty for Extreme Rarity) ---
+            if (S_rarity > rarityThresholdScore) {
+                // If the object is extremely rare AND it was penalized due to size outlier status, 
+                // remove the size penalty (score += Math.abs(penalty))
+                
+                // Calculate size penalty: how much S_size was below the base of 5
+                const sizePenalty = Math.max(0, 5 - S_size); 
+                score += sizePenalty;
+            }
+            
+            // Simple absolute size bonus (to break ties)
+            score += Math.log(candidate.area) * 2;
+            
+            return Math.max(0, score);
+        }
+
+        function filterByScoreAndRank(candidates, frameNum) {
+            if (candidates.length === 0) return [];
+            
+            const telemetry = telemetryMap.get(frameNum);
+            
+            const aspectRatios = candidates.map(c => c.aspectRatio);
+            const rectangularities = candidates.map(c => c.rectangularity);
+            const areas = candidates.map(c => c.area);
+
+            const { mean: arMean } = calculateStats(aspectRatios);
+            const { mean: rectMean } = calculateStats(rectangularities);
+            const { mean: areaMean, std: areaStd } = calculateStats(areas);
+
+            // Calculate a dynamic threshold for rarity forgiveness (top 1% of the rarity score)
+            const allRarityScores = candidates.map(c => {
+                const totalPixels = Array.from(globalColorFrequencies.values()).reduce((a, b) => a + b, 0);
+                const frequency = globalColorFrequencies.get(c.colorKey) || 1;
+                return Math.log(totalPixels / frequency) * 10;
+            }).sort((a, b) => b - a);
+            
+            // Use the score of the 5th rarest object as the threshold for forgiveness
+            const rarityThresholdScore = allRarityScores[Math.min(4, allRarityScores.length - 1)];
+
+            candidates.forEach(c => {
+                c.score = calculateAnomalyScore(c, arMean, rectMean, areaMean, areaStd, rarityThresholdScore);
+            });
+            
+            const rankedDetections = candidates.sort((a, b) => b.score - a.score);
+
+            const MIN_SCORE_THRESHOLD = 50; 
+            const highConfidenceDetections = rankedDetections.filter(c => c.score > MIN_SCORE_THRESHOLD);
+
+            return highConfidenceDetections.slice(0, MAX_DETECTIONS_PER_FRAME);
+        }
+
+        function detectInFrame(frameNum, videoName) {
+            cv.cvtColor(srcMat, hsvMat, cv.COLOR_RGBA2RGB);
+            cv.cvtColor(hsvMat, hsvMat, cv.COLOR_RGB2HSV);
+
+            const rows = video.videoHeight;
+            const cols = video.videoWidth;
+            
+            if (!maskMat) maskMat = new cv.Mat(rows, cols, cv.CV_8UC1);
+            
+            const hsvData = hsvMat.data;
+            const maskData = maskMat.data;
+            
+            const satDiv = 256 / SAT_BINS;
+            const valDiv = 256 / VAL_BINS;
+            
+            const minSatDynamic = globalSatStats.mean - globalSatStats.std * SIGMA_FLOOR;
+            const minValDynamic = globalValStats.mean - globalValStats.std * SIGMA_FLOOR;
+
+            // Get telemetry for dynamic min area calculation
+            const telemetry = telemetryMap.get(frameNum);
+            const zoomFactor = parseFloat(telemetry ? telemetry.zoom : 1.0); // FALLBACK to 1.0
+            const totalFramePixels = rows * cols;
+            
+            // Dynamic Minimum Area (dividing by zoom factor squared, ensures we catch small objects when zoomed in)
+            const dynamicMinAreaPixels = totalFramePixels * RELATIVE_AREA_THRESHOLD / (zoomFactor * zoomFactor);
+
+
+            for (let i = 0; i < rows * cols; i++) {
+                const h = hsvData[i * 3];
+                const s = hsvData[i * 3 + 1];
+                const v = hsvData[i * 3 + 2];
+                
+                if (v < minValDynamic || s < minSatDynamic) {
+                    maskData[i] = 0; 
+                    continue;
+                }
+                
+                const sBin = Math.floor(s / satDiv);
+                const vBin = Math.floor(v / valDiv);
+                const key = (h * SAT_BINS * VAL_BINS) + (sBin * VAL_BINS) + vBin;
+                
+                if (commonColorKeys.has(key)) {
+                    maskData[i] = 0; 
+                } else {
+                    maskData[i] = 255; 
+                }
+            }
+
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            cv.findContours(maskMat, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+            let candidates = [];
+            const minAreaPixels = dynamicMinAreaPixels;
+
+            for (let i = 0; i < contours.size(); ++i) {
+                let contour = contours.get(i);
+                let area = cv.contourArea(contour);
+                
+                if (area < minAreaPixels) continue; 
+
+                let rect = cv.boundingRect(contour);
+                const rectArea = rect.width * rect.height;
+                
+                const aspectRatio = Math.max(rect.width / rect.height, rect.height / rect.width);
+                const rectangularity = area / rectArea;
+                
+                const cx = rect.x + Math.floor(rect.width / 2);
+                const cy = rect.y + Math.floor(rect.height / 2);
+                
+                const p = hsvMat.ucharPtr(cy, cx);
+                const sBin = Math.floor(p[1] / satDiv);
+                const vBin = Math.floor(p[2] / valDiv);
+                const colorKey = (p[0] * SAT_BINS * VAL_BINS) + (sBin * VAL_BINS) + vBin;
+
+                candidates.push({ 
+                    contour, rect, area, aspectRatio, rectangularity, colorKey 
+                });
+            }
+            
+            const finalDetections = filterByScoreAndRank(candidates, frameNum);
+            const finalBoxes = finalDetections.map(c => c.rect);
+            
+            contours.delete(); hierarchy.delete();
+
+            return finalizeDetection(finalBoxes, rows, cols, frameNum, videoName);
+        }
+
+        function finalizeDetection(boxes, rows, cols, frameNum, videoName) {
+            if (boxes.length === 0) return { found: false };
+
+            let thumbMat = srcMat.clone();
+            for (let rect of boxes) {
+                let p1 = new cv.Point(rect.x, rect.y);
+                let p2 = new cv.Point(rect.x + rect.width, rect.y + rect.height);
+                cv.rectangle(thumbMat, p1, p2, [0, 255, 0, 255], 2);
+            }
+
+            let telemetry = telemetryMap.get(frameNum) || null;
+
+            cv.imshow('process-canvas', thumbMat);
+            const dataURL = document.getElementById('process-canvas').toDataURL('image/jpeg', 0.6);
+            thumbMat.delete();
+
+            return { found: true, image: dataURL, count: boxes.length, telemetry: telemetry, videoName: videoName };
+        }
+
+        // --- UI Logic ---
+
+        function updateProgress(stage, percent, detail) {
+            document.getElementById('process-stage').innerText = stage;
+            document.getElementById('process-percent').innerText = Math.floor(percent) + '%';
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('process-detail').innerText = detail;
+        }
+
+        function addResultToGrid(result, frameNum, time, videoName) {
+            const grid = document.getElementById('results-grid');
+            document.getElementById('results-section').classList.remove('hidden');
+            
+            const currentIndex = detections.length;
+            const uniqueId = `${videoName}-${frameNum}`;
+
+            const div = document.createElement('div');
+            div.className = 'group relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-white transition-colors cursor-pointer';
+            
+            div.onclick = () => openModal(currentIndex); 
+
+            detections.push({
+                src: result.image,
+                frame: frameNum,
+                time: time,
+                count: result.count,
+                telemetry: result.telemetry,
+                videoName: videoName
+            });
+            
+            document.getElementById('total-results').innerText = `${detections.length} Frames Found`;
+
+            div.innerHTML = `
+                <div class="aspect-video w-full overflow-hidden">
+                    <img src="${result.image}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-300" loading="lazy">
+                </div>
+                <div class="p-3 bg-gray-900">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-mono text-gray-400">Frame ${frameNum}</span>
+                        <span class="text-xs font-bold text-green-500">${result.count} Object${result.count > 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="text-[10px] text-gray-600 mt-1 font-mono">${time.toFixed(2)}s - ${videoName}</div>
+                </div>
+            `;
+            grid.appendChild(div);
+        }
+
+        function finishProcessing(videoName) {
+            if (fileQueue.length === 0) {
+                document.getElementById('progress-bar').classList.remove('bg-gray-100');
+                document.getElementById('progress-bar').classList.add('bg-green-500');
+                updateProgress('Complete', 100, 'All videos processed.');
+            } else {
+                updateProgress('Ready for Next', 100, `Completed ${videoName}. Starting next video.`);
+            }
+            
+            if (detections.length === 0) {
+                document.getElementById('results-section').classList.remove('hidden');
+                document.getElementById('results-grid').innerHTML = `
+                    <div class="col-span-full text-center py-12 border-2 border-dashed border-gray-800 rounded-lg">
+                        <p class="text-gray-500">Analysis complete. No high-scoring anomalies found.</p>
+                        <p class="text-xs text-gray-600 mt-2">Try adjusting the sensitivity settings in the code.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // --- Modal Logic ---
+        let currentModalIndex = 0;
+
+        function openModal(index) {
+            if(index < 0 || index >= detections.length) return;
+            currentModalIndex = index;
+            
+            const modal = document.getElementById('canvas-modal');
+            const img = document.getElementById('modal-image');
+            const info = document.getElementById('modal-info');
+            
+            const data = detections[index];
+            
+            img.src = data.src;
+            
+            let infoText = `File: ${data.videoName} | Frame: ${data.frame} | Time: ${data.time.toFixed(2)}s | Objects: ${data.count}`;
+
+            if (data.telemetry) {
+                infoText += `\nGPS: ${data.telemetry.lat}, ${data.telemetry.lon} | Alt: ${data.telemetry.alt}m | Pitch: ${data.telemetry.pitch}° | Zoom: ${data.telemetry.zoom}x`;
+            } else if (telemetryMap.size > 0) {
+                infoText += `\nTelemetry file loaded, but specific frame data is missing (using sample rate ${document.getElementById('frame-sample-rate').value}).`;
+            } else {
+                infoText += `\nNo Telemetry (SRT) file loaded.`;
+            }
+
+            info.innerText = infoText;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('canvas-modal').classList.add('hidden');
+        }
+
+        function prevModal() {
+            if(currentModalIndex > 0) openModal(currentModalIndex - 1);
+        }
+
+        function nextModal() {
+            if(currentModalIndex < detections.length - 1) openModal(currentModalIndex + 1);
+        }
+
+    </script>
+</body>
+</html>
